@@ -114,5 +114,5 @@ npm install
 
 ### Chạy
 ```bash
-npm run start
+npm run start:dev
 ```
