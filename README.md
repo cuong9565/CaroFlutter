@@ -123,4 +123,12 @@ lib/
 
 ---
 
-📌 *README này được dùng làm tài liệu định hướng chung cho toàn team trong suốt quá trình phát triển dự án.*
+## Cài đặt
+
+* Chạy lệnh dưới đây
+```bash
+git clone https://github.com/cuong9565/CaroFlutter.git
+```
+
+* Vào CaroFlutter
+* Vào frontend, backend và thực hiện theo README của folder đó
