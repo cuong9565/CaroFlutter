@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:frontend/widgets/buttons/button.dart';
@@ -44,7 +46,7 @@ class Home extends StatelessWidget {
                       ],
                     ),
                     child: Column(
-                      spacing: 10,
+                      spacing: 15,
                       children: [
                         Row(
                           spacing: 15,
@@ -56,7 +58,45 @@ class Home extends StatelessWidget {
                             ),
                           ],
                         ),
-                        Button1(),
+                        Button1(
+                          onPressed: (){
+                            print("Chơi với một người bạn");
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(FontAwesomeIcons.userGroup, color: Colors.grey, size: 20),
+                              Text("Chơi với một người bạn", style: TextStyle(color: Colors.black, fontSize: 15),),
+                              Icon(FontAwesomeIcons.circleQuestion, color: Colors.grey, size: 20)
+                            ]
+                          ),
+                        ),
+                        Button1(
+                          onPressed: (){
+                            print("Chơi với máy");
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(FontAwesomeIcons.robot, color: Colors.grey, size: 20),
+                              Text("Chơi với máy", style: TextStyle(color: Colors.black, fontSize: 15),),
+                              Icon(FontAwesomeIcons.circleQuestion, color: Colors.grey, size: 20)
+                            ]
+                          ),
+                        ),
+                        Button1(
+                          onPressed: (){
+                            print("Chơi trực tuyến");
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(FontAwesomeIcons.globe, color: Colors.grey, size: 20),
+                              Text("Chơi trực tuyến", style: TextStyle(color: Colors.black, fontSize: 15),),
+                              Icon(FontAwesomeIcons.circleQuestion, color: Colors.grey, size: 20)
+                            ]
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -80,14 +120,13 @@ class Home extends StatelessWidget {
                         Row(
                           spacing: 10,
                           children: [
-                            Icon(FontAwesomeIcons.book, color: Colors.green, size: 30),
+                            Icon(FontAwesomeIcons.trophy, color: Colors.orange, size: 30),
                             Text(
-                              "Luật chơi cờ Caro",
+                              "Bảng xếp hạng",
                               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
-                        Rules()
                       ],
                     ),
                   ),

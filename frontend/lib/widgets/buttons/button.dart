@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class Button1 extends StatelessWidget{
-  const Button1({super.key});
+  final VoidCallback onPressed;
+  final Widget child;
+
+  const Button1({super.key, required this.onPressed, required this.child});
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {
-        
-      },
+      onPressed: onPressed,
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.resolveWith((states){ return Colors.white; }),
         overlayColor: WidgetStateProperty.resolveWith((states){ 
@@ -33,14 +34,7 @@ class Button1 extends StatelessWidget{
           ); 
         })
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Icon(FontAwesomeIcons.userGroup, color: Colors.grey, size: 20),
-          Text("Chơi với một người bạn", style: TextStyle(color: Colors.black, fontSize: 15),),
-          Icon(FontAwesomeIcons.circleQuestion, color: Colors.grey, size: 20)
-        ]
-      ),
+      child: child,
     );
   }
 }
