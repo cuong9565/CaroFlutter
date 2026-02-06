@@ -24,27 +24,27 @@ class _MainLayout extends State<Mainlayout> {
   final _items = [
     SalomonBottomBarItem(
       icon: Icon(FontAwesomeIcons.house),
-      title: Text("Home"),
+      title: Text("Trang chủ"),
       selectedColor: Colors.blue,
     ),
     SalomonBottomBarItem(
       icon: Icon(FontAwesomeIcons.message),
-      title: Text("Chat"),
+      title: Text("Nhắn tin"),
       selectedColor: Colors.blue,
     ),
     SalomonBottomBarItem(
       icon: Icon(FontAwesomeIcons.userGroup),
-      title: Text("Friends"),
+      title: Text("Bạn bè"),
       selectedColor: Colors.blue,
     ),
     SalomonBottomBarItem(
       icon: Icon(FontAwesomeIcons.clockRotateLeft),
-      title: Text("History"),
+      title: Text("Lịch sử đấu"),
       selectedColor: Colors.blue,
     ),
     SalomonBottomBarItem(
       icon: Icon(FontAwesomeIcons.userGear),
-      title: Text("Account"),
+      title: Text("Tài khoản"),
       selectedColor: Colors.blue,
     ),
   ];
@@ -190,23 +190,23 @@ class _MainLayout extends State<Mainlayout> {
               destinations: [
                 NavigationRailDestination(
                   icon: Icon(FontAwesomeIcons.house),
-                  label: Text("Home"),
+                  label: Text("Trang chủ"),
                 ),
                 NavigationRailDestination(
                   icon: Icon(FontAwesomeIcons.message),
-                  label: Text("Chat"),
+                  label: Text("Nhắn tin"),
                 ),
                 NavigationRailDestination(
                   icon: Icon(FontAwesomeIcons.userGroup),
-                  label: Text("Friends"),
+                  label: Text("Bạn bè"),
                 ),
                 NavigationRailDestination(
                   icon: Icon(FontAwesomeIcons.clockRotateLeft),
-                  label: Text("History"),
+                  label: Text("Lịch sử đấu"),
                 ),
                 NavigationRailDestination(
                   icon: Icon(FontAwesomeIcons.userGear),
-                  label: Text("Account"),
+                  label: Text("Tài khoản"),
                 ),
               ],
               selectedIconTheme: IconThemeData(color: Colors.blue),
