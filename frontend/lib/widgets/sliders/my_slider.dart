@@ -29,7 +29,6 @@ class _MySlider extends State<MySlider>{
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return Slider(
       value: currentValue, 
       min: minValue,

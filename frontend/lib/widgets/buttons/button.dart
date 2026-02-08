@@ -70,6 +70,61 @@ class CircleButton1 extends StatelessWidget{
   }
 }
 
+// class CircleButton2 extends StatelessWidget{
+//   final void Function() onPressed;
+//   final Widget child;
+//   const CircleButton2({super.key, required this.onPressed, required this.child});
+  
+//   @override
+//   Widget build(BuildContext context) {
+//     return ElevatedButton(
+//       onPressed: (){ onPressed(); },
+//       style: ButtonStyle(
+//         shape: WidgetStateProperty.resolveWith((state){ return CircleBorder(); }),
+//         backgroundColor: WidgetStateProperty.resolveWith((state){ return Color.fromRGBO(255, 255, 255, 0); }),
+//         overlayColor: WidgetStateProperty.resolveWith((state){ 
+//           if(state.contains(WidgetState.pressed)) return Colors.grey[200];
+//           if(state.contains(WidgetState.hovered)) return Colors.grey[200];
+//           return Color.fromRGBO(255, 255, 255, 0);
+//         }),
+//         elevation: WidgetStateProperty.resolveWith((state){ 
+//           if(state.contains(WidgetState.pressed)) return 0; // Khi nhấn
+//           if(state.contains(WidgetState.hovered)) return 3; // Khi hover
+//           return 0;
+//         }),
+//         padding: WidgetStatePropertyAll(EdgeInsets.zero), // Bỏ padding mặc định
+//         tapTargetSize: MaterialTapTargetSize.shrinkWrap,  // Bỏ padding mặc định
+//         minimumSize: WidgetStateProperty.all(Size.zero),  // Bỏ padding mặc định
+//       ),
+//       child: child,
+//     );
+//   }
+// }
+class CircleButton2 extends StatelessWidget{
+  final bool isVisible;
+  final void Function(BuildContext) onPressed;
+  final Widget child;
+  const CircleButton2({super.key, required this.onPressed, required this.child, required this.isVisible});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Visibility(
+      visible: isVisible,
+      maintainSize: true,       // Bật maintainSize, maintainAnimation, maintainState cùng lúc thì 
+      maintainAnimation: true,  // => kích thước element vẫn không đổi và không thể tác động
+      maintainState: true,      // Tắt cả 3 thì kích thước element bằng 0 nhưng vẫn chiếm chỗ
+      
+      child: InkWell(
+        customBorder: CircleBorder(),
+        onTap: (){ onPressed(context); },
+        hoverColor: Colors.grey[200],  // Màu hover
+        splashColor: Colors.grey[300], // Màu sau pressed
+        child: child,
+      )
+    );
+  }
+}
+
 class ButtonRectangle1 extends StatelessWidget{
   final void Function() onPressed;
   final Widget child;

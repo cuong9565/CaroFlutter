@@ -6,11 +6,9 @@ import 'package:frontend/screens/friends.dart';
 import 'package:frontend/screens/history.dart';
 import 'package:frontend/screens/home.dart';
 import 'package:frontend/widgets/buttons/button.dart';
-import 'package:frontend/widgets/layout/main_pop_up_layout.dart';
-import 'package:frontend/widgets/sliders/my_slider.dart';
+import 'package:frontend/widgets/layout/pop_up_layout.dart';
 import 'package:frontend/widgets/switch/switch.dart';
 import 'package:frontend/widgets/switch/switch_volumn_main.dart';
-import 'package:popover/popover.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
@@ -27,32 +25,36 @@ class _MainLayout extends State<Mainlayout> {
 
   final List<Widget> _pages = [Home(), Chat(), Friends(), History(), Account()];
 
-  final _items = [
-    SalomonBottomBarItem(
-      icon: Icon(FontAwesomeIcons.house),
-      title: Text("Trang chủ"),
-      selectedColor: Colors.blue,
-    ),
-    SalomonBottomBarItem(
-      icon: Icon(FontAwesomeIcons.message),
-      title: Text("Nhắn tin"),
-      selectedColor: Colors.blue,
-    ),
-    SalomonBottomBarItem(
-      icon: Icon(FontAwesomeIcons.userGroup),
-      title: Text("Bạn bè"),
-      selectedColor: Colors.blue,
-    ),
-    SalomonBottomBarItem(
-      icon: Icon(FontAwesomeIcons.clockRotateLeft),
-      title: Text("Lịch sử đấu"),
-      selectedColor: Colors.blue,
-    ),
-    SalomonBottomBarItem(
-      icon: Icon(FontAwesomeIcons.userGear),
-      title: Text("Tài khoản"),
-      selectedColor: Colors.blue,
-    ),
+  // Danh sách icon cho navbar
+  final List<IconData> _iconsNavigation = [
+    FontAwesomeIcons.house,
+    FontAwesomeIcons.message,
+    FontAwesomeIcons.userGroup,
+    FontAwesomeIcons.clockRotateLeft,
+    FontAwesomeIcons.userGear,
+  ];
+
+  // Danh sách tên navbar
+  final List<String> _titleNavigation = [
+    "Trang chủ",
+    "Nhắn tin",
+    "Bạn bè",
+    "Lịch sử đấu",
+    "Tài khoản"
+  ];
+
+  // Danh sách các hàm cho chức năng ở header
+  final List<void Function(BuildContext)> showPopOverFunctions = [
+    _showPopOverUser,
+    _showPopOverAlert,
+    _showPopOverSetting
+  ];
+
+  // Danh sách icon cho chức năng ở header
+  final List<IconData> popOverFunctionsIcon = [
+    FontAwesomeIcons.user,
+    FontAwesomeIcons.bell,
+    FontAwesomeIcons.gear
   ];
 
   @override
@@ -97,27 +99,11 @@ class _MainLayout extends State<Mainlayout> {
                 Row(
                   spacing: 10,
                   children: [
-                    CircleButton1(
-                      onPressed: (btnContext){ _showPopOverUser(btnContext); },
+                    for(int i=0; i<showPopOverFunctions.length; i++) CircleButton1(
+                      onPressed: (btnContext){ showPopOverFunctions[i](btnContext); },
                       child: Icon(
-                        FontAwesomeIcons.user, 
+                        popOverFunctionsIcon[i],
                         size: 15,
-                        color: Colors.grey[800],
-                      )
-                    ),
-                    CircleButton1(
-                      onPressed: (btnContext){ _showPopOverAlert(btnContext); }, 
-                      child: Icon(
-                        FontAwesomeIcons.bell, 
-                        size: 17,                        
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                    CircleButton1(
-                      onPressed: (btnContext){ _showPopOverSetting(btnContext); },
-                      child: Icon(
-                        FontAwesomeIcons.gear, 
-                        size: 17,
                         color: Colors.grey[800],
                       )
                     ),
@@ -156,7 +142,14 @@ class _MainLayout extends State<Mainlayout> {
             _selectedIndex = index;
           });
         },
-        items: _items,
+        items: [
+          for(int i=0; i<_iconsNavigation.length; i++)
+            SalomonBottomBarItem(
+              icon: Icon(_iconsNavigation[i]),
+              title: Text(_titleNavigation[i]),
+              selectedColor: Colors.blue,
+            )
+        ]
       ),
     );
   }
@@ -176,26 +169,11 @@ class _MainLayout extends State<Mainlayout> {
                 });
               },
               destinations: [
-                NavigationRailDestination(
-                  icon: Icon(FontAwesomeIcons.house),
-                  label: Text("Trang chủ"),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(FontAwesomeIcons.message),
-                  label: Text("Nhắn tin"),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(FontAwesomeIcons.userGroup),
-                  label: Text("Bạn bè"),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(FontAwesomeIcons.clockRotateLeft),
-                  label: Text("Lịch sử đấu"),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(FontAwesomeIcons.userGear),
-                  label: Text("Tài khoản"),
-                ),
+                for(int i=0; i<_iconsNavigation.length; i++)
+                  NavigationRailDestination(
+                    icon: Icon(_iconsNavigation[i]),
+                    label: Text(_titleNavigation[i]),
+                  ),
               ],
               selectedIconTheme: IconThemeData(color: Colors.blue),
               selectedLabelTextStyle: TextStyle(
@@ -233,7 +211,6 @@ class _MainLayout extends State<Mainlayout> {
       ],
     );
   }
-
 }
 
 // Hàm hiển thị popup cho button
@@ -264,7 +241,7 @@ void _showPopOverUser(BuildContext btnContext){
   ];
 
   // Gọi hàm
-  MainPopUpLayout(
+  PopUpLayout(
     w: w,
     h: h,
     btnContext: btnContext, 
@@ -313,7 +290,7 @@ void _showPopOverAlert(BuildContext btnContext){
   ];
 
   // Gọi hàm
-  MainPopUpLayout(
+  PopUpLayout(
     w: w,
     h: h,
     btnContext: btnContext, 
@@ -407,7 +384,7 @@ void _showPopOverSetting(BuildContext btnContext){
   ];
 
   // Gọi hàm
-  MainPopUpLayout(
+  PopUpLayout(
     w: w,
     h: h,
     btnContext: btnContext, 
