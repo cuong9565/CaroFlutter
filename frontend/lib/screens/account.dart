@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:hovering/hovering.dart';
 
 class Account extends StatelessWidget {
   const Account({super.key});
@@ -32,7 +33,7 @@ class Account extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    Container(
+                    HoverContainer(
                       margin: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
                       width: 90,
                       height: 90,
@@ -40,15 +41,11 @@ class Account extends StatelessWidget {
                         color: Colors.grey[300],
                         shape: BoxShape.circle,
                       ),
-                      child: Center(
-                        child: Text(
-                          'G',
-                          style: TextStyle(
-                            fontSize: 30.0,
-                            color: Colors.grey[700],
-                          ),
-                        ),
+                      hoverDecoration: BoxDecoration(
+                        color: Colors.black,
+                        shape: BoxShape.circle,
                       ),
+                      child: HoverTextIcon(),
                     ),
                     Padding(
                       padding: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
@@ -191,6 +188,7 @@ class Account extends StatelessWidget {
                     height: 50.0,
                     child: FloatingActionButton(
                       onPressed: () {},
+                      hoverColor: Colors.blue[600],
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -235,7 +233,7 @@ class Account extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 FaIcon(
-                                  FontAwesomeIcons.floppyDisk,
+                                  FontAwesomeIcons.trashCan,
                                   color: Colors.red,
                                 ),
                                 Padding(padding: EdgeInsets.all(5.0)),
@@ -258,6 +256,43 @@ class Account extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class HoverTextIcon extends StatefulWidget {
+  const HoverTextIcon({super.key});
+
+  @override
+  State<HoverTextIcon> createState() => _HoverTextIconState();
+}
+
+class _HoverTextIconState extends State<HoverTextIcon> {
+  bool check = true;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 90,
+      height: 90,
+      decoration: BoxDecoration(shape: BoxShape.circle),
+      child: MouseRegion(
+        onEnter: (PointerEvent details) => setState(() {
+          check = false;
+        }),
+        onExit: (PointerEvent details) => setState(() {
+          check = true;
+        }),
+        child: check
+            ? Center(
+                child: Text(
+                  'G',
+                  style: TextStyle(fontSize: 30.0, color: Colors.grey[700]),
+                ),
+              )
+            : Center(
+                child: FaIcon(FontAwesomeIcons.camera, color: Colors.white),
+              ),
       ),
     );
   }
