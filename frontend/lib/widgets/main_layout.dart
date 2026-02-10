@@ -74,7 +74,7 @@ class _MainLayout extends State<Mainlayout> {
                     spacing: 10,
                     children: [
                       Image(
-                        image: AssetImage('assets/images/logo.png'),
+                        image: AssetImage('assets/images/tic-tac-toe.png'),
                         width: 50,
                         height: 50,
                       ),
@@ -100,7 +100,7 @@ class _MainLayout extends State<Mainlayout> {
                         minimumSize: Size.zero,
                       ),
                       child: Icon(
-                        FontAwesomeIcons.user, 
+                        FontAwesomeIcons.user,
                         size: 15,
                         color: Colors.grey[800],
                       ),
@@ -114,8 +114,8 @@ class _MainLayout extends State<Mainlayout> {
                         minimumSize: Size.zero,
                       ),
                       child: Icon(
-                        FontAwesomeIcons.bell, 
-                        size: 17,                        
+                        FontAwesomeIcons.bell,
+                        size: 17,
                         color: Colors.grey[800],
                       ),
                     ),
@@ -128,16 +128,16 @@ class _MainLayout extends State<Mainlayout> {
                         minimumSize: Size.zero,
                       ),
                       child: Icon(
-                        FontAwesomeIcons.gear, 
+                        FontAwesomeIcons.gear,
                         size: 17,
                         color: Colors.grey[800],
-                      )
-                    )
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
-          ),        
+          ),
           Divider(height: 1),
           Expanded(
             child: SizedBox(
@@ -227,7 +227,7 @@ class _MainLayout extends State<Mainlayout> {
           duration: Duration(milliseconds: 200),
           child: Center(
             child: ElevatedButton(
-              onPressed: (){
+              onPressed: () {
                 setState(() {
                   _isExpanded = !_isExpanded;
                 });
@@ -238,10 +238,14 @@ class _MainLayout extends State<Mainlayout> {
                 backgroundColor: Colors.grey[200],
                 foregroundColor: Colors.grey[800],
               ),
-              child: Icon(_isExpanded ? FontAwesomeIcons.anglesLeft : FontAwesomeIcons.anglesRight),
+              child: Icon(
+                _isExpanded
+                    ? FontAwesomeIcons.anglesLeft
+                    : FontAwesomeIcons.anglesRight,
+              ),
             ),
           ),
-        )
+        ),
       ],
     );
   }
