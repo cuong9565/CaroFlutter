@@ -5,7 +5,6 @@ import 'package:frontend/widgets/charts/circle_chart.dart';
 import 'package:frontend/widgets/charts/linear_chart.dart';
 import 'package:frontend/widgets/layout/pop_up_layout.dart';
 import 'package:frontend/widgets/rules/rules.dart';
-import 'package:popover/popover.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 
 class Home extends StatelessWidget {
@@ -95,7 +94,7 @@ class _GameMode extends StatelessWidget{
   ];
   // Danh sách chức năng cho nút bấm
   final List<void Function()> _functionButton = [
-    (){ print("Bạn"); },
+    (){ _navigateToPlayWithFriend(); },
     (){ print("Máy"); },
     (){ print("Online"); }
   ];
@@ -497,6 +496,7 @@ class _Ranking extends StatelessWidget{
     );
   }
 }
+// Khung chứa tiến trình trò chơi
 class _GameProcess extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
@@ -549,6 +549,7 @@ class _GameProcess extends StatelessWidget{
     );
   }
 }
+// Khung chứa luật chơi
 class _GameRules extends StatelessWidget{
   @override
   Widget build(BuildContext context) {
@@ -584,7 +585,7 @@ class _GameRules extends StatelessWidget{
     );
   }
 }
-
+// Khung chứa nội dung trợ giúp
 void _funtionHelperLayout(BuildContext btnContext, double h, String txtHeader, List<String>txts){
   final double w = 350;
   final EdgeInsets padding = EdgeInsets.fromLTRB(15, 0, 15, 0);
@@ -614,3 +615,8 @@ void _funtionHelperLayout(BuildContext btnContext, double h, String txtHeader, L
     ],
   ).showPopUp(); 
 }
+// Hàm chức năng navigate cho nút chơi cùng một người bạn
+void _navigateToPlayWithFriend(){
+
+}
+//

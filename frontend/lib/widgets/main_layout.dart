@@ -1,29 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:frontend/screens/account.dart';
-import 'package:frontend/screens/chat.dart';
-import 'package:frontend/screens/friends.dart';
-import 'package:frontend/screens/history.dart';
-import 'package:frontend/screens/home.dart';
 import 'package:frontend/widgets/buttons/button.dart';
 import 'package:frontend/widgets/layout/pop_up_layout.dart';
+import 'package:frontend/widgets/router.dart';
 import 'package:frontend/widgets/switch/switch.dart';
 import 'package:frontend/widgets/switch/switch_volumn_main.dart';
+import 'package:go_router/go_router.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
 class Mainlayout extends StatefulWidget {
-  const Mainlayout({super.key});
+  final Widget child;
+  const Mainlayout({super.key, required this.child});
 
   @override
   State<Mainlayout> createState() => _MainLayout();
 }
 
 class _MainLayout extends State<Mainlayout> {
-  int _selectedIndex = 0;
   bool _isExpanded = true;
-
-  final List<Widget> _pages = [Home(), Chat(), Friends(), History(), Account()];
 
   // Danh sách icon cho navbar
   final List<IconData> _iconsNavigation = [
@@ -57,6 +52,11 @@ class _MainLayout extends State<Mainlayout> {
     FontAwesomeIcons.gear
   ];
 
+  // Danh đường dẫn
+  final List<String> paths = [
+    '/', '/chat', '/friends', '/history', '/account'
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,16 +73,14 @@ class _MainLayout extends State<Mainlayout> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = 0;
-                    });
+                  onTap: () { 
+                    context.go('/');
                   },
                   child: Row(
                     spacing: 10,
                     children: [
                       Image(
-                        image: AssetImage('assets/images/logo.png'),
+                        image: AssetImage('assets/images/tic-tac-toe.png'),
                         width: 50,
                         height: 50,
                       ),
@@ -133,14 +131,15 @@ class _MainLayout extends State<Mainlayout> {
   }
 
   Widget _mobileNavigate() {
+    final selectedIndex = findIndexByPath(context);
+    final child = widget.child;
+
     return Scaffold(
-      body: _pages[_selectedIndex],
+      body: child,
       bottomNavigationBar: SalomonBottomBar(
-        currentIndex: _selectedIndex,
+        currentIndex: selectedIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          context.go(paths[index]);
         },
         items: [
           for(int i=0; i<_iconsNavigation.length; i++)
@@ -155,18 +154,19 @@ class _MainLayout extends State<Mainlayout> {
   }
 
   Widget _desktopMainLayout() {
+    final selectedIndex = findIndexByPath(context);
+    final child = widget.child;
+
     return Stack(
       children: [
         Row(
           children: [
             NavigationRail(
-              selectedIndex: _selectedIndex,
+              selectedIndex: selectedIndex,
               extended: _isExpanded,
               minExtendedWidth: 200,
               onDestinationSelected: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
+                context.go(paths[index]);
               },
               destinations: [
                 for(int i=0; i<_iconsNavigation.length; i++)
@@ -183,7 +183,7 @@ class _MainLayout extends State<Mainlayout> {
               unselectedLabelTextStyle: TextStyle(color: Colors.black),
             ),
             VerticalDivider(width: 1),
-            Expanded(child: _pages[_selectedIndex]),
+            Expanded(child: child),
           ],
         ),
         AnimatedPositioned(
@@ -193,7 +193,7 @@ class _MainLayout extends State<Mainlayout> {
           duration: Duration(milliseconds: 200),
           child: Center(
             child: ElevatedButton(
-              onPressed: (){
+              onPressed: () {
                 setState(() {
                   _isExpanded = !_isExpanded;
                 });
@@ -204,10 +204,14 @@ class _MainLayout extends State<Mainlayout> {
                 backgroundColor: Colors.grey[200],
                 foregroundColor: Colors.grey[800],
               ),
-              child: Icon(_isExpanded ? FontAwesomeIcons.anglesLeft : FontAwesomeIcons.anglesRight),
+              child: Icon(
+                _isExpanded
+                    ? FontAwesomeIcons.anglesLeft
+                    : FontAwesomeIcons.anglesRight,
+              ),
             ),
           ),
-        )
+        ),
       ],
     );
   }
