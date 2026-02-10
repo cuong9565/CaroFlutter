@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hovering/hovering.dart';
+import 'package:file_picker/file_picker.dart';
 
 class Account extends StatelessWidget {
   const Account({super.key});
@@ -33,20 +35,7 @@ class Account extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    HoverContainer(
-                      margin: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        shape: BoxShape.circle,
-                      ),
-                      hoverDecoration: BoxDecoration(
-                        color: Colors.black,
-                        shape: BoxShape.circle,
-                      ),
-                      child: HoverTextIcon(),
-                    ),
+                    ChooseImage(),
                     Padding(
                       padding: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
                       child: Column(
@@ -293,6 +282,74 @@ class _HoverTextIconState extends State<HoverTextIcon> {
             : Center(
                 child: FaIcon(FontAwesomeIcons.camera, color: Colors.white),
               ),
+      ),
+    );
+  }
+}
+
+class ChooseImage extends StatefulWidget {
+  const ChooseImage({super.key});
+
+  @override
+  State<ChooseImage> createState() => _ChooseImageState();
+}
+
+class _ChooseImageState extends State<ChooseImage> {
+  PlatformFile? _platformFile;
+
+  Future<void> pickImage() async {
+    try {
+      // Pick an image file using file_picker package
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+      );
+
+      // If user cancels the picker, do nothing
+      if (result == null) return;
+
+      // If user picks an image, update the state with the new image file
+      setState(() {
+        _platformFile = result.files.first;
+      });
+    } catch (e) {
+      // If there is an error, show a snackbar with the error message
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(elevation: 0),
+      onHover: (value) => {ElevatedButton.styleFrom(elevation: 0)},
+      onPressed: pickImage,
+      child: HoverContainer(
+        margin: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
+        width: 90,
+        height: 90,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          shape: BoxShape.circle,
+        ),
+        hoverDecoration: BoxDecoration(
+          color: Colors.black,
+          shape: BoxShape.circle,
+        ),
+        child: _platformFile != null
+            ? ClipOval(
+                child: SizedBox.fromSize(
+                  size: Size.fromRadius(100.0),
+                  child: Image.memory(
+                    Uint8List.fromList(_platformFile!.bytes!),
+                    width: 300,
+                    height: 300,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
+            : HoverTextIcon(),
       ),
     );
   }
