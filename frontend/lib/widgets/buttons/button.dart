@@ -151,7 +151,41 @@ class ButtonRectangle1 extends StatelessWidget{
     );
   }
 }
+class ButtonRectangle2 extends StatelessWidget{
+  final void Function() onPressed;
+  final Widget child;
+  const ButtonRectangle2({super.key, required this.onPressed, required this.child});
 
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ButtonStyle(
+        shape: WidgetStateProperty.resolveWith((state){ 
+          return RoundedRectangleBorder(
+            borderRadius: BorderRadiusGeometry.circular(10),
+            side: BorderSide(
+              color: Colors.grey,
+              width: 0.5
+            ),
+          );
+        }),
+        backgroundColor: WidgetStateProperty.resolveWith((state){ return Colors.white; }),
+        overlayColor: WidgetStateProperty.resolveWith((states){
+          if(states.contains(WidgetState.pressed)) return Colors.grey[300];
+          if(states.contains(WidgetState.hovered)) return Colors.grey[100];
+          return Colors.transparent;
+        }),
+        elevation: WidgetStateProperty.resolveWith((states){
+          return 0;
+        }),
+        
+        padding: WidgetStateProperty.resolveWith((state){ return EdgeInsets.fromLTRB(15, 5, 15, 5); }),
+      ),
+      child: child
+    );
+  }
+}
 class ButtonIconForeGround extends StatefulWidget{
   final IconData iconData;
   final double sizeIcon;

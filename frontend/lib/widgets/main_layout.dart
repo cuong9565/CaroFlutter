@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:frontend/widgets/buttons/button.dart';
+import 'package:frontend/widgets/layout/frame.dart';
+import 'package:frontend/widgets/layout/my_divider.dart';
 import 'package:frontend/widgets/layout/pop_up_layout.dart';
 import 'package:frontend/widgets/router.dart';
 import 'package:frontend/widgets/switch/switch.dart';
@@ -59,74 +61,67 @@ class _MainLayout extends State<Mainlayout> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            height: 70,
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            color: Colors.white,
-
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                InkWell(
-                  onTap: () { 
-                    context.go('/');
-                  },
-                  child: Row(
-                    spacing: 10,
-                    children: [
-                      Image(
-                        image: AssetImage('assets/images/tic-tac-toe.png'),
-                        width: 50,
-                        height: 50,
-                      ),
-                      Text(
-                        'Caro Online',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
+    return Column(
+      children: [
+        Frame(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              InkWell(
+                onTap: () { 
+                  context.go('/');
+                },
+                child: Row(
                   spacing: 10,
                   children: [
-                    for(int i=0; i<showPopOverFunctions.length; i++) CircleButton1(
-                      onPressed: (btnContext){ showPopOverFunctions[i](btnContext); },
-                      child: Icon(
-                        popOverFunctionsIcon[i],
-                        size: 15,
-                        color: Colors.grey[800],
-                      )
+                    Image(
+                      image: AssetImage('assets/images/tic-tac-toe.png'),
+                      width: 50,
+                      height: 50,
+                    ),
+                    Text(
+                      'Caro Online',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          Divider(height: 1),
-          Expanded(
-            child: SizedBox(
-              width: double.infinity,
-              child: ResponsiveBuilder(
-                builder: (context, sizing) {
-                  if (sizing.isMobile) {
-                    return _mobileNavigate();
-                  } else {
-                    return _desktopMainLayout();
-                  }
-                },
               ),
+              Row(
+                spacing: 10,
+                children: [
+                  for(int i=0; i<showPopOverFunctions.length; i++) CircleButton1(
+                    onPressed: (btnContext){ showPopOverFunctions[i](btnContext); },
+                    child: Icon(
+                      popOverFunctionsIcon[i],
+                      size: 15,
+                      color: Colors.grey[800],
+                    )
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        MyDivider(),
+        Expanded(
+          child: SizedBox(
+            width: double.infinity,
+            child: ResponsiveBuilder(
+              builder: (context, sizing) {
+                if (sizing.isMobile) {
+                  return _mobileNavigate();
+                } else {
+                  return _desktopMainLayout();
+                }
+              },
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

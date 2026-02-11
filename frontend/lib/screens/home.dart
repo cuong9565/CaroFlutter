@@ -5,6 +5,7 @@ import 'package:frontend/widgets/charts/circle_chart.dart';
 import 'package:frontend/widgets/charts/linear_chart.dart';
 import 'package:frontend/widgets/layout/pop_up_layout.dart';
 import 'package:frontend/widgets/rules/rules.dart';
+import 'package:go_router/go_router.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 
 class Home extends StatelessWidget {
@@ -93,10 +94,10 @@ class _GameMode extends StatelessWidget{
     "Chơi trực tuyến"
   ];
   // Danh sách chức năng cho nút bấm
-  final List<void Function()> _functionButton = [
-    (){ _navigateToPlayWithFriend(); },
-    (){ print("Máy"); },
-    (){ print("Online"); }
+  final List<void Function(BuildContext)> _functionButton = [
+    (BuildContext context){ _navigateToPlayWithFriend(context); },
+    (BuildContext context){ print("Máy"); },
+    (BuildContext context){ print("Online"); }
   ];
   // Danh sách chức năng cho nút trợ giúp
   final List<void Function(BuildContext)> _functionHelper = [
@@ -153,7 +154,7 @@ class _GameMode extends StatelessWidget{
             ),
             for(int i=0; i<_iconButton.length; i++)
               Button1(
-                onPressed: _functionButton[i],
+                onPressed: (){ _functionButton[i](context); },
                 child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: !sizing.isMobile ? [
@@ -246,226 +247,29 @@ class _Ranking extends StatelessWidget{
                 ),
               ],
               rows: [
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
-                DataRow(
-                  onSelectChanged: (indexSelected){
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#1", style: TextStyle(),)),
-                    DataCell(
-                      Row(
-                        children: [
-                          Icon(Icons.abc_outlined),
-                          Text("Player1")
-                        ],
-                      )
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle(),),
-                      )
-                    ),
-                  ],
-                ),
+                for(int i=0; i<10; i++)
+                  DataRow(
+                    onSelectChanged: (indexSelected){
+                      print(indexSelected);
+                    },
+                    cells: [
+                      DataCell(Text("#1", style: TextStyle(),)),
+                      DataCell(
+                        Row(
+                          children: [
+                            Icon(Icons.abc_outlined),
+                            Text("Player1")
+                          ],
+                        )
+                      ),
+                      DataCell(
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text("150/45/5/76.9%", style: TextStyle(),),
+                        )
+                      ),
+                    ],
+                  ),
                 DataRow(
                   onSelectChanged: (indexSelected){
                     print(indexSelected);
@@ -616,7 +420,7 @@ void _funtionHelperLayout(BuildContext btnContext, double h, String txtHeader, L
   ).showPopUp(); 
 }
 // Hàm chức năng navigate cho nút chơi cùng một người bạn
-void _navigateToPlayWithFriend(){
-
+void _navigateToPlayWithFriend(BuildContext context){
+  context.go('/game');
 }
 //

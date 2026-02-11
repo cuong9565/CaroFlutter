@@ -1,7 +1,8 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:frontend/screens/account.dart';
 import 'package:frontend/screens/chat.dart';
 import 'package:frontend/screens/friends.dart';
+import 'package:frontend/screens/game.dart';
 import 'package:frontend/screens/history.dart';
 import 'package:frontend/screens/home.dart';
 import 'package:frontend/widgets/main_layout.dart';
@@ -12,7 +13,7 @@ final GoRouter router = GoRouter(
   routes: [
     ShellRoute(
       builder: (context, state, child){
-        return SafeArea(child: Mainlayout(child: child));
+        return SafeArea(child: Scaffold(body: Mainlayout(child: child)));
       },
       routes: [
         GoRoute(
@@ -37,7 +38,10 @@ final GoRouter router = GoRouter(
         ),
       ]
     ),
-
+    GoRoute(
+      path: '/game',
+      builder: (_, _) => const SafeArea(child: Scaffold(body: Game()))
+    )
   ],
 );
 
