@@ -1,7 +1,6 @@
-
 import 'package:flutter/material.dart';
 
-class Button1 extends StatelessWidget{
+class Button1 extends StatelessWidget {
   final VoidCallback onPressed;
   final Widget child;
 
@@ -12,56 +11,69 @@ class Button1 extends StatelessWidget{
     return ElevatedButton(
       onPressed: onPressed,
       style: ButtonStyle(
-        backgroundColor: WidgetStateProperty.resolveWith((states){ return Colors.white; }),
-        overlayColor: WidgetStateProperty.resolveWith((states){ 
-          if(states.contains(WidgetState.pressed)) return Colors.grey[100];
-          return Colors.transparent;   
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          return Colors.white;
         }),
-        elevation: WidgetStateProperty.resolveWith((states){ 
-          if(states.contains(WidgetState.pressed)) return 0;
-          if(states.contains(WidgetState.hovered)) return 3;
-          return 1.5;  
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return Colors.grey[100];
+          return Colors.transparent;
         }),
-        padding: WidgetStateProperty.resolveWith((states){ return EdgeInsets.all(20); }),
-        shape: WidgetStateProperty.resolveWith((states){ return 
-          RoundedRectangleBorder( 
+        elevation: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return 0;
+          if (states.contains(WidgetState.hovered)) return 3;
+          return 1.5;
+        }),
+        padding: WidgetStateProperty.resolveWith((states) {
+          return EdgeInsets.all(20);
+        }),
+        shape: WidgetStateProperty.resolveWith((states) {
+          return RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(999),
-            side: BorderSide(
-              color: Colors.grey,
-              width: 0.5
-            )   
-          ); 
-        })
+            side: BorderSide(color: Colors.grey, width: 0.5),
+          );
+        }),
       ),
       child: child,
     );
   }
 }
 
-class CircleButton1 extends StatelessWidget{
+class CircleButton1 extends StatelessWidget {
   final void Function(BuildContext) onPressed;
   final Widget child;
 
-  const CircleButton1({super.key, required this.onPressed, required this.child});
-  
+  const CircleButton1({
+    super.key,
+    required this.onPressed,
+    required this.child,
+  });
+
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: () => onPressed(context), 
+      onPressed: () => onPressed(context),
       style: ButtonStyle(
-        shape: WidgetStateProperty.resolveWith((state){ return CircleBorder(); }),        
-        backgroundColor: WidgetStateProperty.resolveWith((state){ return Colors.grey[200]; }),
-        overlayColor: WidgetStateProperty.resolveWith((states){ 
-          if(states.contains(WidgetState.pressed)) return Colors.grey[300];
-          return Colors.transparent;   
+        shape: WidgetStateProperty.resolveWith((state) {
+          return CircleBorder();
         }),
-        elevation: WidgetStateProperty.resolveWith((states){ 
-          if(states.contains(WidgetState.pressed)) return 0;
-          if(states.contains(WidgetState.hovered)) return 3;
-          return 1.5;  
+        backgroundColor: WidgetStateProperty.resolveWith((state) {
+          return Colors.grey[200];
         }),
-        padding: WidgetStateProperty.resolveWith((state){ return EdgeInsets.all(15); }),
-        minimumSize: WidgetStateProperty.resolveWith((state){ return Size.zero; }),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return Colors.grey[300];
+          return Colors.transparent;
+        }),
+        elevation: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return 0;
+          if (states.contains(WidgetState.hovered)) return 3;
+          return 1.5;
+        }),
+        padding: WidgetStateProperty.resolveWith((state) {
+          return EdgeInsets.all(15);
+        }),
+        minimumSize: WidgetStateProperty.resolveWith((state) {
+          return Size.zero;
+        }),
       ),
       child: child,
     );
@@ -72,7 +84,7 @@ class CircleButton1 extends StatelessWidget{
 //   final void Function() onPressed;
 //   final Widget child;
 //   const CircleButton2({super.key, required this.onPressed, required this.child});
-  
+
 //   @override
 //   Widget build(BuildContext context) {
 //     return ElevatedButton(
@@ -80,12 +92,12 @@ class CircleButton1 extends StatelessWidget{
 //       style: ButtonStyle(
 //         shape: WidgetStateProperty.resolveWith((state){ return CircleBorder(); }),
 //         backgroundColor: WidgetStateProperty.resolveWith((state){ return Color.fromRGBO(255, 255, 255, 0); }),
-//         overlayColor: WidgetStateProperty.resolveWith((state){ 
+//         overlayColor: WidgetStateProperty.resolveWith((state){
 //           if(state.contains(WidgetState.pressed)) return Colors.grey[200];
 //           if(state.contains(WidgetState.hovered)) return Colors.grey[200];
 //           return Color.fromRGBO(255, 255, 255, 0);
 //         }),
-//         elevation: WidgetStateProperty.resolveWith((state){ 
+//         elevation: WidgetStateProperty.resolveWith((state){
 //           if(state.contains(WidgetState.pressed)) return 0; // Khi nhấn
 //           if(state.contains(WidgetState.hovered)) return 3; // Khi hover
 //           return 0;
@@ -98,118 +110,152 @@ class CircleButton1 extends StatelessWidget{
 //     );
 //   }
 // }
-class CircleButton2 extends StatelessWidget{
+class CircleButton2 extends StatelessWidget {
   final bool isVisible;
   final void Function(BuildContext) onPressed;
   final Widget child;
-  const CircleButton2({super.key, required this.onPressed, required this.child, required this.isVisible});
-  
+  const CircleButton2({
+    super.key,
+    required this.onPressed,
+    required this.child,
+    required this.isVisible,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Visibility(
       visible: isVisible,
-      maintainSize: true,       // Bật maintainSize, maintainAnimation, maintainState cùng lúc thì 
-      maintainAnimation: true,  // => kích thước element vẫn không đổi và không thể tác động
-      maintainState: true,      // Tắt cả 3 thì kích thước element bằng 0 nhưng vẫn chiếm chỗ
-      
+      maintainSize:
+          true, // Bật maintainSize, maintainAnimation, maintainState cùng lúc thì
+      maintainAnimation:
+          true, // => kích thước element vẫn không đổi và không thể tác động
+      maintainState:
+          true, // Tắt cả 3 thì kích thước element bằng 0 nhưng vẫn chiếm chỗ
+
       child: InkWell(
         customBorder: CircleBorder(),
-        onTap: (){ onPressed(context); },
-        hoverColor: Colors.grey[200],  // Màu hover
+        onTap: () {
+          onPressed(context);
+        },
+        hoverColor: Colors.grey[200], // Màu hover
         splashColor: Colors.grey[300], // Màu sau pressed
         child: child,
-      )
+      ),
     );
   }
 }
 
-class ButtonRectangle1 extends StatelessWidget{
+class ButtonRectangle1 extends StatelessWidget {
   final void Function() onPressed;
   final Widget child;
-  const ButtonRectangle1({super.key, required this.onPressed, required this.child});
+  const ButtonRectangle1({
+    super.key,
+    required this.onPressed,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ButtonStyle(
-        shape: WidgetStateProperty.resolveWith((state){ return RoundedRectangleBorder(borderRadius: BorderRadius.zero); }),
-        backgroundColor: WidgetStateProperty.resolveWith((state){ return Colors.white; }),
-        overlayColor: WidgetStateProperty.resolveWith((states){ 
-          if(states.contains(WidgetState.pressed)) return Colors.grey[300];
-          if(states.contains(WidgetState.hovered)) return Colors.grey[100];
-          return Colors.transparent;   
+        shape: WidgetStateProperty.resolveWith((state) {
+          return RoundedRectangleBorder(borderRadius: BorderRadius.zero);
         }),
-        elevation: WidgetStateProperty.resolveWith((states){ 
-          if(states.contains(WidgetState.pressed)) return 0;
-          if(states.contains(WidgetState.hovered)) return 3;
-          return 1.5;
+        backgroundColor: WidgetStateProperty.resolveWith((state) {
+          return Colors.white;
         }),
-        padding: WidgetStateProperty.resolveWith((state){ return EdgeInsets.fromLTRB(15, 0, 15, 0); }),
-      ), 
-      child: child
-    );
-  }
-}
-class ButtonRectangle2 extends StatelessWidget{
-  final void Function() onPressed;
-  final Widget child;
-  const ButtonRectangle2({super.key, required this.onPressed, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ButtonStyle(
-        shape: WidgetStateProperty.resolveWith((state){ 
-          return RoundedRectangleBorder(
-            borderRadius: BorderRadiusGeometry.circular(10),
-            side: BorderSide(
-              color: Colors.grey,
-              width: 0.5
-            ),
-          );
-        }),
-        backgroundColor: WidgetStateProperty.resolveWith((state){ return Colors.white; }),
-        overlayColor: WidgetStateProperty.resolveWith((states){
-          if(states.contains(WidgetState.pressed)) return Colors.grey[300];
-          if(states.contains(WidgetState.hovered)) return Colors.grey[100];
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return Colors.grey[300];
+          if (states.contains(WidgetState.hovered)) return Colors.grey[100];
           return Colors.transparent;
         }),
-        elevation: WidgetStateProperty.resolveWith((states){
-          return 0;
+        elevation: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return 0;
+          if (states.contains(WidgetState.hovered)) return 3;
+          return 1.5;
         }),
-        
-        padding: WidgetStateProperty.resolveWith((state){ return EdgeInsets.fromLTRB(15, 5, 15, 5); }),
+        padding: WidgetStateProperty.resolveWith((state) {
+          return EdgeInsets.fromLTRB(15, 0, 15, 0);
+        }),
       ),
-      child: child
+      child: child,
     );
   }
 }
-class ButtonIconForeGround extends StatefulWidget{
+
+class ButtonRectangle2 extends StatelessWidget {
+  final void Function() onPressed;
+  final Widget child;
+  const ButtonRectangle2({
+    super.key,
+    required this.onPressed,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ButtonStyle(
+        shape: WidgetStateProperty.resolveWith((state) {
+          return RoundedRectangleBorder(
+            borderRadius: BorderRadiusGeometry.circular(10),
+            side: BorderSide(color: Colors.grey, width: 0.5),
+          );
+        }),
+        backgroundColor: WidgetStateProperty.resolveWith((state) {
+          return Colors.white;
+        }),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return Colors.grey[300];
+          if (states.contains(WidgetState.hovered)) return Colors.grey[100];
+          return Colors.transparent;
+        }),
+        elevation: WidgetStateProperty.resolveWith((states) {
+          return 0;
+        }),
+
+        padding: WidgetStateProperty.resolveWith((state) {
+          return EdgeInsets.fromLTRB(15, 5, 15, 5);
+        }),
+      ),
+      child: child,
+    );
+  }
+}
+
+class ButtonIconForeGround extends StatefulWidget {
   final IconData iconData;
   final double sizeIcon;
   final Color textColor;
   final Color textHoverColor;
   final void Function() onPressed;
-  const ButtonIconForeGround({super.key, required this.iconData, required this.sizeIcon, required this.textColor, required this.textHoverColor, required this.onPressed});
+  const ButtonIconForeGround({
+    super.key,
+    required this.iconData,
+    required this.sizeIcon,
+    required this.textColor,
+    required this.textHoverColor,
+    required this.onPressed,
+  });
 
   @override
   State<StatefulWidget> createState() => _ButtonIconForeGround();
 }
 
-class _ButtonIconForeGround extends State<ButtonIconForeGround>{
+class _ButtonIconForeGround extends State<ButtonIconForeGround> {
   bool isHover = false;
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (event){
+      onEnter: (event) {
         setState(() {
           isHover = true;
         });
       },
-      onExit: (event){
+      onExit: (event) {
         setState(() {
           isHover = false;
         });
@@ -218,9 +264,59 @@ class _ButtonIconForeGround extends State<ButtonIconForeGround>{
         onTap: () => widget.onPressed(),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          child: Icon(widget.iconData, size: widget.sizeIcon, color: isHover ? widget.textHoverColor : widget.textColor),
+          child: Icon(
+            widget.iconData,
+            size: widget.sizeIcon,
+            color: isHover ? widget.textHoverColor : widget.textColor,
+          ),
         ),
-      )
+      ),
+    );
+  }
+}
+
+class ButtonNormal extends StatefulWidget {
+  final void Function() onPressed;
+  final String text;
+  const ButtonNormal({super.key, required this.text, required this.onPressed});
+
+  @override
+  State<StatefulWidget> createState() => _ButtonNormal();
+}
+
+class _ButtonNormal extends State<ButtonNormal> {
+  late String _text;
+  late bool _isHover;
+
+  @override
+  void initState() {
+    super.initState();
+    _text = widget.text;
+    _isHover = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHover = true),
+      onExit: (_) => setState(() => _isHover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => widget.onPressed(),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          decoration: BoxDecoration(
+            color: _isHover ? Colors.grey.shade300 : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade500, width: 1),
+          ),
+          child: Text(
+            _text,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300),
+          ),
+        ),
+      ),
     );
   }
 }

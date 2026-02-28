@@ -2,16 +2,22 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
-import { AuthModule } from './auth/auth.module';
 import { TestdbModule } from './testdb/testdb.module';
+import { UsersModule } from './users/users.module';
+import { B2Module } from './b2/b2.module';
+import { MatchesPlayerModule } from './matches_player/matches_player.module';
+import { GameModule } from './game/game.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    AuthModule,
     TestdbModule,
+    UsersModule,
+    B2Module,
+    GameModule,
+    MatchesPlayerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
