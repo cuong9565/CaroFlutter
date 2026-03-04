@@ -18,7 +18,7 @@ class GameOnline extends ConsumerStatefulWidget {
 class _GameOnlineState extends ConsumerState<GameOnline> {
   late bool currMoveIsX;
   late bool isYourTurn;
-  bool status = false;
+  int status = -1; // -1: Chưa đấu xong, 0 => Thắng, 1 => Thua, 2 => Hòa
   final int gridSize = 16;
   final double cellSize = 25;
 
@@ -27,7 +27,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
   Set<Offset> visitedO = {};
 
   String? idRoom;
-  late Function(dynamic) joinRoomListener, onYourMove;
+  late Function(dynamic) joinRoomListener, onYourMove, onOpponentOutRoom;
 
   @override
   void initState() {
@@ -80,28 +80,37 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
         ),
       );
     }
-    if (status == true) {
+    if (status != -1) {
       // Đã kết thúc trận đấu
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        String str = "";
+        if (status == 0)
+          str = "Bạn đã thắng";
+        else if (status == 1)
+          str = "Bạn đã thua";
+        else if (status == 2)
+          str = "Bạn đã hòa";
         showDialog(
+          barrierDismissible: false,
           context: context,
           builder: (context) {
-            return AlertDialog(
-              title: Text("Bạn có chắc muốn thoát?"),
-              content: Text("Việc hủy bỏ ván đấu mặc định đối thủ sẽ thắng."),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Hủy'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    context.go('/');
-                  },
-                  child: const Text('Hủy bỏ ván đấu'),
-                ),
-              ],
+            return Center(
+              child: Column(
+                spacing: 10,
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(str, style: TextStyle(fontSize: 20, color: Colors.red)),
+                  ButtonNormal(text: "Chơi lại", onPressed: () {}),
+                  ButtonNormal(
+                    text: "Rời khỏi phòng",
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.go('/');
+                    },
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -312,7 +321,13 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                                   child: const Text('Hủy'),
                                 ),
                                 TextButton(
-                                  onPressed: () => context.go('/'),
+                                  onPressed: () => {
+                                    SocketService.socket.emit('on-out-room', {
+                                      'roomId': idRoom,
+                                      'idUserLose': data?['user']['id'],
+                                    }),
+                                    context.go('/'),
+                                  },
                                   child: const Text('Hủy bỏ ván đấu'),
                                 ),
                               ],
@@ -358,7 +373,26 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
       if (!mounted) return;
       if (data['status'] == true) {
         setState(() {
-          status = true;
+          status = data['result'];
+          if (status != 0) {
+            if (!currMoveIsX) {
+              visitedX = {
+                ...visitedX,
+                Offset(
+                  data['lastTurn']['x'].toDouble(),
+                  data['lastTurn']['y'].toDouble(),
+                ),
+              };
+            } else {
+              visitedO = {
+                ...visitedO,
+                Offset(
+                  data['lastTurn']['x'].toDouble(),
+                  data['lastTurn']['y'].toDouble(),
+                ),
+              };
+            }
+          }
         });
         return;
       }
@@ -378,9 +412,14 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
         }
       });
     };
+    onOpponentOutRoom = (data) {
+      if (!mounted) return;
+      context.go('/');
+    };
     final id = ref.read(userNotifier).value;
     SocketService.socket.on('join-room', joinRoomListener);
     SocketService.socket.on('your-turn-move', onYourMove);
+    SocketService.socket.on('opponent-out-room', onOpponentOutRoom);
     SocketService.socket.emit('request-play-game-online', {
       'idUser': id!['user']['id'],
     });

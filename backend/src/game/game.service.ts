@@ -6,7 +6,9 @@ import {
   MovePosition,
   QueueGameOnlineType,
   ResponseMovePosition,
+  ResponseOutRoom,
   RoomsOnlineGameType,
+  UserOutRoom,
   UserRequestType,
 } from './game.type';
 import { MatchesPlayerService } from 'src/matches_player/matches_player.service';
@@ -106,6 +108,10 @@ export class GameService {
         typeLine: 1,
         top: top,
         bottom: bottom,
+        lastTurn: {
+          x: move.x,
+          y: move.y,
+        },
       };
 
     // // Đường ngang
@@ -140,6 +146,10 @@ export class GameService {
         typeLine: 2,
         top: top,
         bottom: bottom,
+        lastTurn: {
+          x: move.x,
+          y: move.y,
+        },
       };
 
     // // Đường chéo huyền
@@ -174,6 +184,10 @@ export class GameService {
         typeLine: 3,
         top: top,
         bottom: bottom,
+        lastTurn: {
+          x: move.x,
+          y: move.y,
+        },
       };
 
     // // Đường chéo sắc
@@ -208,9 +222,11 @@ export class GameService {
         typeLine: 4,
         top: top,
         bottom: bottom,
+        lastTurn: {
+          x: move.x,
+          y: move.y,
+        },
       };
-
-    console.log(this.RoomsOnlineGame[move.roomId].board);
 
     // Đổi lượt chơi
     this.RoomsOnlineGame[move.roomId].isFirstUserMove =
@@ -224,6 +240,22 @@ export class GameService {
       client: newData.isFirstUserMove ? newData.firstUser : newData.secondUser,
       x: move.x,
       y: move.y,
+    };
+  }
+
+  OnOutRoom(data: UserOutRoom): ResponseOutRoom {
+    const idRoom = data.roomId;
+    const room = this.RoomsOnlineGame[idRoom];
+    const userLose = data.userLose;
+    const userWin =
+      room.firstUser.idUser === userLose.idUser
+        ? room.secondUser
+        : room.firstUser;
+    console.log(userLose.socket.id, userWin.socket.id);
+    return {
+      roomId: idRoom,
+      userLose: userLose,
+      userWin: userWin,
     };
   }
 }
