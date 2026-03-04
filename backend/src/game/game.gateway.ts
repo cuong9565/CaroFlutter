@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
-import type { MovePosition, UserIdType } from './game.type';
+import type { DataSendOnOutRoom, MovePosition, UserIdType } from './game.type';
 
 @WebSocketGateway({
   cors: {
@@ -73,6 +73,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         typeLine: resPonseData.typeLine,
         top: resPonseData.top,
         bottom: resPonseData.bottom,
+        lastTurn: resPonseData.lastTurn,
       });
       resPonseData.client2!.socket.emit('your-turn-move', {
         status: resPonseData.status,
@@ -80,7 +81,25 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         typeLine: resPonseData.typeLine,
         top: resPonseData.top,
         bottom: resPonseData.bottom,
+        lastTurn: resPonseData.lastTurn,
       });
     }
   }
+
+  @SubscribeMessage('on-out-room')
+  onOutRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: DataSendOnOutRoom,
+  ) {
+    const requestOutRoom = this.gameService.OnOutRoom({
+      roomId: data.roomId,
+      userLose: {
+        idUser: data.idUserLose,
+        socket: client,
+      },
+    });
+    requestOutRoom.userWin.socket.emit('opponent-out-room', {});
+  }
+
+  statusBattle;
 }
