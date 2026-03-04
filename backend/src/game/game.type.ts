@@ -52,9 +52,26 @@ export type ResponseMovePosition = {
   typeLine?: number;
   top?: Cell;
   bottom?: Cell;
+  lastTurn?: Cell;
 };
 
 export type Cell = {
   x: number;
   y: number;
+};
+
+export type UserOutRoom = {
+  roomId: string;
+  userLose: UserRequestType;
+};
+
+export type ResponseOutRoom = {
+  roomId: string;
+  userWin: UserRequestType;
+  userLose: UserRequestType;
+};
+
+export type DataSendOnOutRoom = {
+  roomId: string;
+  idUserLose: string;
 };
