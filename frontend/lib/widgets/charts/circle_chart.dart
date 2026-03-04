@@ -19,6 +19,7 @@ class CircleChart extends StatelessWidget {
         style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)
       ),
       progressColor: Colors.green,
+      backgroundColor: Colors.grey[300]!,
     );
   }
 }

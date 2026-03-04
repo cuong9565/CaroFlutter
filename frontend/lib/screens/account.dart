@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:hovering/hovering.dart';
+import 'package:file_picker/file_picker.dart';
 
 class Account extends StatelessWidget {
   const Account({super.key});
@@ -32,24 +35,7 @@ class Account extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    Container(
-                      margin: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          'G',
-                          style: TextStyle(
-                            fontSize: 30.0,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ),
-                    ),
+                    ChooseImage(),
                     Padding(
                       padding: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
                       child: Column(
@@ -191,6 +177,7 @@ class Account extends StatelessWidget {
                     height: 50.0,
                     child: FloatingActionButton(
                       onPressed: () {},
+                      hoverColor: Colors.blue[600],
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -235,7 +222,7 @@ class Account extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 FaIcon(
-                                  FontAwesomeIcons.floppyDisk,
+                                  FontAwesomeIcons.trashCan,
                                   color: Colors.red,
                                 ),
                                 Padding(padding: EdgeInsets.all(5.0)),
@@ -258,6 +245,111 @@ class Account extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class HoverTextIcon extends StatefulWidget {
+  const HoverTextIcon({super.key});
+
+  @override
+  State<HoverTextIcon> createState() => _HoverTextIconState();
+}
+
+class _HoverTextIconState extends State<HoverTextIcon> {
+  bool check = true;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 90,
+      height: 90,
+      decoration: BoxDecoration(shape: BoxShape.circle),
+      child: MouseRegion(
+        onEnter: (PointerEvent details) => setState(() {
+          check = false;
+        }),
+        onExit: (PointerEvent details) => setState(() {
+          check = true;
+        }),
+        child: check
+            ? Center(
+                child: Text(
+                  'G',
+                  style: TextStyle(fontSize: 30.0, color: Colors.grey[700]),
+                ),
+              )
+            : Center(
+                child: FaIcon(FontAwesomeIcons.camera, color: Colors.white),
+              ),
+      ),
+    );
+  }
+}
+
+class ChooseImage extends StatefulWidget {
+  const ChooseImage({super.key});
+
+  @override
+  State<ChooseImage> createState() => _ChooseImageState();
+}
+
+class _ChooseImageState extends State<ChooseImage> {
+  PlatformFile? _platformFile;
+
+  Future<void> pickImage() async {
+    try {
+      // Pick an image file using file_picker package
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+      );
+
+      // If user cancels the picker, do nothing
+      if (result == null) return;
+
+      // If user picks an image, update the state with the new image file
+      setState(() {
+        _platformFile = result.files.first;
+      });
+    } catch (e) {
+      // If there is an error, show a snackbar with the error message
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(elevation: 0),
+      onHover: (value) => {ElevatedButton.styleFrom(elevation: 0)},
+      onPressed: pickImage,
+      child: HoverContainer(
+        margin: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
+        width: 90,
+        height: 90,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          shape: BoxShape.circle,
+        ),
+        hoverDecoration: BoxDecoration(
+          color: Colors.black,
+          shape: BoxShape.circle,
+        ),
+        child: _platformFile != null
+            ? ClipOval(
+                child: SizedBox.fromSize(
+                  size: Size.fromRadius(100.0),
+                  child: Image.memory(
+                    Uint8List.fromList(_platformFile!.bytes!),
+                    width: 300,
+                    height: 300,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
+            : HoverTextIcon(),
       ),
     );
   }

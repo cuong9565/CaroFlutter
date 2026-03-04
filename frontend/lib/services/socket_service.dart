@@ -1,5 +1,5 @@
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import '../models/models.dart';
+import '../models/UserModel.dart';
 
 class SocketService {
   static final SocketService _instance = SocketService._internal();

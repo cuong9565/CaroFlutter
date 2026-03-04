@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../models/models.dart';
+import '../models/UserModel.dart';
 import '../services/socket_service.dart';
 
 class ChatProvider with ChangeNotifier {

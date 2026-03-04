@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/models.dart';
+import '../models/UserModel.dart';
 import '../providers/chat_provider.dart';
-import '../widgets/message_bubble.dart';
-import '../widgets/message_input.dart';
+import '../widgets/switch/message_bubble.dart';
+import '../widgets/switch/message_input.dart';
 
 class ChatDetail extends StatefulWidget {
   final Conversation conversation;
-
+  final bool isEmbedded;
+  
   const ChatDetail({
     super.key,
     required this.conversation,
+    this.isEmbedded = false,
   });
 
   @override
@@ -65,6 +67,119 @@ class _ChatDetailState extends State<ChatDetail> {
         _scrollToBottom();
       }
     });
+
+    Widget content = Column(
+      children: [
+        // Header for embedded mode
+        if (widget.isEmbedded)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey[300],
+                  child: otherUser?.avatar != null
+                      ? ClipOval(
+                          child: Image.network(
+                            otherUser!.avatar!,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildDefaultAvatar(otherUser.name);
+                            },
+                          ),
+                        )
+                      : _buildDefaultAvatar(otherUser?.name ?? '?'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.conversation.getOtherUserName(chatProvider.currentUserId),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (otherUser?.isOnline ?? false)
+                        const Text(
+                          'Đang hoạt động',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+        // Messages list
+        Expanded(
+          child: messages.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Chưa có tin nhắn nào',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  itemCount: messages.length + (isOtherUserTyping ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == messages.length && isOtherUserTyping) {
+                      return _buildTypingIndicator();
+                    }
+                    final message = messages[index];
+                    final isMe = message.sender.id == chatProvider.currentUserId;
+                    bool showAvatar = true;
+                    if (index < messages.length - 1) {
+                      final nextMessage = messages[index + 1];
+                      showAvatar = nextMessage.sender.id != message.sender.id;
+                    }
+                    return MessageBubble(
+                      message: message,
+                      isMe: isMe,
+                      showAvatar: showAvatar,
+                    );
+                  },
+                ),
+        ),
+        // Message input
+        MessageInput(
+          onSendMessage: (content) {
+            chatProvider.sendMessage(widget.conversation.id, content);
+          },
+          onTypingChanged: (isTyping) {
+            if (_isTyping != isTyping) {
+              _isTyping = isTyping;
+              chatProvider.setTyping(widget.conversation.id, isTyping);
+            }
+          },
+        ),
+      ],
+    );
+
+    if (widget.isEmbedded) {
+      return Container(
+        color: Colors.white,
+        child: content,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -137,60 +252,7 @@ class _ChatDetailState extends State<ChatDetail> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Messages list
-          Expanded(
-            child: messages.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Chưa có tin nhắn nào',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    itemCount: messages.length + (isOtherUserTyping ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      // Show typing indicator at the end
-                      if (index == messages.length && isOtherUserTyping) {
-                        return _buildTypingIndicator();
-                      }
-
-                      final message = messages[index];
-                      final isMe = message.sender.id == chatProvider.currentUserId;
-                      
-                      // Check if we should show avatar (first message or different sender)
-                      bool showAvatar = true;
-                      if (index < messages.length - 1) {
-                        final nextMessage = messages[index + 1];
-                        showAvatar = nextMessage.sender.id != message.sender.id;
-                      }
-
-                      return MessageBubble(
-                        message: message,
-                        isMe: isMe,
-                        showAvatar: showAvatar,
-                      );
-                    },
-                  ),
-          ),
-
-          // Message input
-          MessageInput(
-            onSendMessage: (content) {
-              chatProvider.sendMessage(widget.conversation.id, content);
-            },
-            onTypingChanged: (isTyping) {
-              if (_isTyping != isTyping) {
-                _isTyping = isTyping;
-                chatProvider.setTyping(widget.conversation.id, isTyping);
-              }
-            },
-          ),
-        ],
-      ),
+      body: content,
     );
   }
 

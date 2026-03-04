@@ -9,9 +9,12 @@ class Rules extends StatelessWidget{
     List<String>rules = [
       "Hai người chơi lần lượt đặt quân cờ lên bàn cờ.",
       "Quân trắng đi trước.",
-      "Một khi đã đặt quân, không được di chuyển.",
-      "Người chơi giành chiến thắng khi đặt được 5 quân cờ liên tiếp theo 1 hàng (chiều ngang, chiều dọc, đường chéo).",
-      "Hai người chơi cùng hòa khi bàn cờ đã kín hoặc đã hết thời gian quy định."
+      "Một khi đã đặt quân, không được đi lại.",
+      "Người chơi giành chiến thắng khi đặt được 5 quân cờ liên tiếp trên 1 hàng (hàng ngang, hàng dọc, hàng chéo).",
+      "Hai người chơi cùng hòa khi bàn cờ đã kín hoặc đã hết thời gian quy định.",
+      "Thời gian mỗi lượt: 40 giây.",
+      "Số phút cho mỗi người chơi: 5 phút.",
+      "Người đi trước: ngẫu nhiên.",
     ];
 
     return Column(

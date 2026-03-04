@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/chat_provider.dart';
-import '../models/models.dart';
+import '../models/UserModel.dart';
 import 'chat_detail.dart';
 
 class Chat extends StatefulWidget {
@@ -13,6 +13,8 @@ class Chat extends StatefulWidget {
 }
 
 class _ChatState extends State<Chat> {
+  Conversation? _selectedConversation;
+
   @override
   void initState() {
     super.initState();
@@ -25,100 +27,6 @@ class _ChatState extends State<Chat> {
       // chatProvider.connect('http://localhost:3000', 'user123');
     });
   }
-  
-//   @override 
-//   Widget build ( BuildContext context){
-//     return Scaffold (
-//       appBar: AppBar (
-//         title :const Text ('tin nhan' , style: TextStyle(fontWeight: FrontWeight.bold),),
-//         elevation : 0 ,
-//         actions :[
-//           IconButton (
-//             icon : const Icon(Icons.search),
-//             onPressed: () {
-
-//             },
-//           ),
-//           IconButton (
-//             icon : const Icon(Icons.more_vert),
-//             onPressed: (){
-//             },
-      
-//           ),
-
-//         ],
-
-//       ),
-//       body: Consumer<ChatProvider>(
-//         builder: (context,chatProvider,child){
-//           if(chatProvider.conversations.isEmpty){
-//             return const Center(
-//               child: Column(
-//                 mainAxisAlignment: MainAxisAlignment.center,
-//                 children: [
-//                   Icon(Icons.chat_bubble_outline,
-//                   size : 64 ,
-//                   color: Colors.grey ,
-//                   ),
-//                   SizedBox( height: 16),
-//                   Text('Chua co cuoc tro chuyen nao',style:TextStyle(fontSize: 16,color: Colors.grey),),
-                
-//                 ],
-//               ),
-//             )
-//           }
-//           return Column(
-//             children: [
-//                if (!chatProvider.isConnected)
-//                 Container(
-//                   width: double.infinity,
-//                   padding: const EdgeInsets.symmetric(vertical: 8),
-//                   color: Colors.orange[100],
-//                   child: Row(
-//                     mainAxisAlignment: MainAxisAlignment.center,
-//                     children: [
-//                       Icon(Icons.cloud_off, size: 16, color: Colors.orange[800]),
-//                       const SizedBox(width: 8),
-//                       Text(
-//                         'Đang kết nối lại...',
-//                         style: TextStyle(
-//                           color: Colors.orange[800],
-//                           fontSize: 12,
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-
-//                 Expanded(child:ListView.builder(itemBuilder: (context , index){
-//                   final conversation = chatProvider.conversations[index];
-//                   return _buildConversationItem(context , conversation , chatProvider);
-//                 },),),],
-//           );
-//         },
-//       ),
-//       floatingActionButton: FloatingActionButton(onPressed: (){
-
-//       },
-//       child: const Icon(Icons.edit),
-//       ),
-//     ),
-// }
-
-//   Widget _buildConversationItem(
-//     BuildContext context ,
-//     Conversation conversation ,
-//     ChatProvider chatProvider,
-//   ) {
-//     final otherUser= conversation.getOtherUser(chatProvider.currentUserId);
-//     final hasUnread = conversation.unreadCount > 0 ;
-//      return InkWell( 
-//       onTap:() {
-//         Navigator.push (context,MaterialPageRoute(builder: (context)=> ChatDetail(conversation: conversation),),);
-//       },
-//      )
-//   }
-
 
               
     
@@ -146,75 +54,84 @@ class _ChatState extends State<Chat> {
           ),
         ],
       ),
-      body: Consumer<ChatProvider>(
-        builder: (context, chatProvider, child) {
-          if (chatProvider.conversations.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 700;
+          
+          return Consumer<ChatProvider>(
+            builder: (context, chatProvider, child) {
+              if (chatProvider.conversations.isEmpty) {
+                return _buildEmptyState();
+              }
+
+              final conversationsList = Column(
                 children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Chưa có cuộc trò chuyện nào',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
+                  // Connection status indicator
+                  if (!chatProvider.isConnected)
+                    _buildConnectionStatus(),
+                  
+                  // Conversations list
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: chatProvider.conversations.length,
+                      itemBuilder: (context, index) {
+                        final conversation = chatProvider.conversations[index];
+                        return _buildConversationItem(
+                          context, 
+                          conversation, 
+                          chatProvider,
+                          isWide,
+                        );
+                      },
                     ),
                   ),
                 ],
-              ),
-            );
-          }
+              );
 
-          return Column(
-            children: [
-              // Connection status indicator
-              if (!chatProvider.isConnected)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  color: Colors.orange[100],
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.cloud_off, size: 16, color: Colors.orange[800]),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Đang kết nối...',
-                        style: TextStyle(
-                          color: Colors.orange[800],
-                          fontSize: 12,
+              if (isWide) {
+                return Row(
+                  children: [
+                    // Left Column: Conversations List
+                    SizedBox(
+                      width: 350,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border(right: BorderSide(color: Colors.grey[200]!)),
                         ),
+                        child: conversationsList,
                       ),
-                    ],
-                  ),
-                ),
-              
-              // Conversations list
-              Expanded(
-                child: ListView.builder(
-                  itemCount: chatProvider.conversations.length,
-                  itemBuilder: (context, index) {
-                    final conversation = chatProvider.conversations[index];
-                    return _buildConversationItem(context, conversation, chatProvider);
-                  },
-                ),
-              ),
-            ],
+                    ),
+                    
+                    // Right Column: Chat Detail
+                    Expanded(
+                      child: _selectedConversation != null
+                          ? ChatDetail(
+                              key: ValueKey(_selectedConversation!.id),
+                              conversation: _selectedConversation!,
+                              isEmbedded: true,
+                            )
+                          : const Center(
+                              child: Text(
+                                'Chọn một cuộc trò chuyện để bắt đầu',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                    ),
+                  ],
+                );
+              }
+
+              return conversationsList;
+            },
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Navigate to new chat screen
-        },
-        child: const Icon(Icons.edit),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     // TODO: Navigate to new chat screen
+      //   },
+      //   child: const Icon(Icons.edit),
+      // ),
     );
   }
 
@@ -222,22 +139,31 @@ class _ChatState extends State<Chat> {
     BuildContext context,
     Conversation conversation,
     ChatProvider chatProvider,
+    bool isWide,
   ) {
     final otherUser = conversation.getOtherUser(chatProvider.currentUserId);
     final hasUnread = conversation.unreadCount > 0;
+    final isSelected = _selectedConversation?.id == conversation.id;
 
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatDetail(conversation: conversation),
-          ),
-        );
+        if (isWide) {
+          setState(() {
+            _selectedConversation = conversation;
+          });
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatDetail(conversation: conversation),
+            ),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
+          color: isSelected && isWide ? Colors.blue[50] : null,
           border: Border(
             bottom: BorderSide(color: Colors.grey[200]!),
           ),
@@ -319,7 +245,7 @@ class _ChatState extends State<Chat> {
                           conversation.lastMessage?.content ?? '',
                           style: TextStyle(
                             fontSize: 14,
-                            color: hasUnread ? Colors.black87 : Colors.grey[600],
+                            color: hasUnread ? const Color.fromARGB(221, 59, 13, 13) : Colors.grey[600],
                             fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
                           ),
                           maxLines: 1,
@@ -350,6 +276,51 @@ class _ChatState extends State<Chat> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 64,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Chưa có cuộc trò chuyện nào',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConnectionStatus() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      color: Colors.orange[100],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.cloud_off, size: 16, color: Colors.orange[800]),
+          const SizedBox(width: 8),
+          Text(
+            'Đang kết nối...',
+            style: TextStyle(
+              color: Colors.orange[800],
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
