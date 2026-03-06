@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../models/UserModel.dart';
+import '../../core/models/user_model.dart';
+import '../../core/models/message_model.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -93,10 +94,10 @@ class MessageBubble extends StatelessWidget {
     return CircleAvatar(
       radius: 16,
       backgroundColor: Colors.grey[300],
-      child: message.sender.avatar != null
+      child: message.sender.avartarUrl != null
           ? ClipOval(
               child: Image.network(
-                message.sender.avatar!,
+                message.sender.avartarUrl!,
                 width: 32,
                 height: 32,
                 fit: BoxFit.cover,
@@ -111,8 +112,8 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildDefaultAvatar() {
     return Text(
-      message.sender.name.isNotEmpty
-          ? message.sender.name[0].toUpperCase()
+      message.sender.username.isNotEmpty
+          ? message.sender.username[0].toUpperCase()
           : '?',
       style: const TextStyle(
         fontSize: 14,

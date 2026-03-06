@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
-import '../models/UserModel.dart';
+import '../models/user_model.dart';
 import '../services/socket_service.dart';
-
+import '../models/conversation_model.dart';
+import '../models/message_model.dart';
 class ChatProvider with ChangeNotifier {
   final SocketService _socketService = SocketService();
   
@@ -23,19 +24,11 @@ class ChatProvider with ChangeNotifier {
     _socketService.onMessageReceived = _handleNewMessage;
     _socketService.onTyping = _handleTyping;
     _socketService.onUserStatusChanged = _handleUserStatusChanged;
-    _socketService.onConnectionChanged = (connected) {
-      _isConnected = connected;
-      notifyListeners();
-    };
-  }
-
-  void connect(String serverUrl, String userId) {
-    _currentUserId = userId;
-    _socketService.connect(serverUrl, userId);
+    
   }
 
   void disconnect() {
-    _socketService.disconnect();
+    SocketService.disconnect();
     _isConnected = false;
     notifyListeners();
   }
@@ -71,7 +64,17 @@ class ChatProvider with ChangeNotifier {
     final message = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       conversationId: conversationId,
-      sender: User(id: _currentUserId, name: 'You'),
+      sender: UserModel(
+        id: _currentUserId,
+        username: 'You',
+        typeLogin: 0,
+        avartarUrl: null,
+        rating: 0.0,
+        totalMatches: 0,
+        totalWins: 0,
+        totalDraws: 0,
+        totalLosses: 0,
+      ),
       content: content,
       timestamp: DateTime.now(),
       isSent: false,
@@ -102,7 +105,7 @@ class ChatProvider with ChangeNotifier {
 
   // Mark message as read
   void markAsRead(String conversationId, String messageId) {
-    _socketService.markAsRead(conversationId, messageId);
+    // _socketService.markAsRead(conversationId, messageId);
     
     // Update local message
     final messages = _conversationMessages[conversationId];
@@ -166,13 +169,13 @@ class ChatProvider with ChangeNotifier {
       Conversation(
         id: '1',
         participants: [
-          User(id: _currentUserId, name: 'You'),
-          User(id: '2', name: 'Nguyễn Văn A', isOnline: true),
+          UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0.0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
+          UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: true),
         ],
         lastMessage: Message(
           id: '1',
           conversationId: '1',
-          sender: User(id: '2', name: 'Nguyễn Văn A'),
+          sender: UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
           content: 'Chào bạn! Chơi cờ caro không?',
           timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
         ),
@@ -182,13 +185,13 @@ class ChatProvider with ChangeNotifier {
       Conversation(
         id: '2',
         participants: [
-          User(id: _currentUserId, name: 'You'),
-          User(id: '3', name: 'Trần Thị B', isOnline: false),
+          UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
+          UserModel(id: '3', username: 'Trần Thị B', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: false),
         ],
         lastMessage: Message(
           id: '2',
           conversationId: '2',
-          sender: User(id: _currentUserId, name: 'You'),
+          sender: UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
           content: 'Ok, hẹn gặp lại!',
           timestamp: DateTime.now().subtract(const Duration(hours: 2)),
         ),
@@ -199,7 +202,7 @@ class ChatProvider with ChangeNotifier {
   }
 
   List<Message> _generateMockMessages(String conversationId) {
-    final otherUser = User(id: '2', name: 'Nguyễn Văn A', isOnline: true);
+    final otherUser = UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: true);
     final now = DateTime.now();
     
     return [
@@ -214,7 +217,7 @@ class ChatProvider with ChangeNotifier {
       Message(
         id: '2',
         conversationId: conversationId,
-        sender: User(id: _currentUserId, name: 'You'),
+        sender: UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
         content: 'Chào! Bạn khỏe không?',
         timestamp: now.subtract(const Duration(minutes: 9)),
         isRead: true,

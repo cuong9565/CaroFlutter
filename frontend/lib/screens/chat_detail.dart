@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/UserModel.dart';
-import '../providers/chat_provider.dart';
+import '../core/models/user_model.dart';
+import '../core/models/conversation_model.dart';
+import '../core/models/message_model.dart';
+import '../core/providers/chat_provider.dart';
 import '../widgets/switch/message_bubble.dart';
 import '../widgets/switch/message_input.dart';
 
@@ -83,19 +85,19 @@ class _ChatDetailState extends State<ChatDetail> {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: Colors.grey[300],
-                  child: otherUser?.avatar != null
+                  child: otherUser?.avartarUrl != null
                       ? ClipOval(
                           child: Image.network(
-                            otherUser!.avatar!,
+                            otherUser!.avartarUrl!,
                             width: 40,
                             height: 40,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return _buildDefaultAvatar(otherUser.name);
+                              return _buildDefaultAvatar(otherUser.username);
                             },
                           ),
                         )
-                      : _buildDefaultAvatar(otherUser?.name ?? '?'),
+                      : _buildDefaultAvatar(otherUser?.username ?? '?'),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -190,19 +192,19 @@ class _ChatDetailState extends State<ChatDetail> {
             CircleAvatar(
               radius: 18,
               backgroundColor: Colors.grey[300],
-              child: otherUser?.avatar != null
+              child: otherUser?.avartarUrl != null
                   ? ClipOval(
                       child: Image.network(
-                        otherUser!.avatar!,
+                        otherUser!.avartarUrl!,
                         width: 36,
                         height: 36,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return _buildDefaultAvatar(otherUser.name);
+                          return _buildDefaultAvatar(otherUser.username);
                         },
                       ),
                     )
-                  : _buildDefaultAvatar(otherUser?.name ?? '?'),
+                  : _buildDefaultAvatar(otherUser?.username ?? '?'),
             ),
             const SizedBox(width: 12),
             
@@ -232,18 +234,6 @@ class _ChatDetailState extends State<ChatDetail> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.videocam),
-            onPressed: () {
-              // TODO: Implement video call
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.phone),
-            onPressed: () {
-              // TODO: Implement voice call
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () {

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../providers/chat_provider.dart';
-import '../models/UserModel.dart';
+import '../core/providers/chat_provider.dart';
+import '../core/models/user_model.dart';
+import '../core/models/conversation_model.dart';
 import 'chat_detail.dart';
 
 class Chat extends StatefulWidget {
@@ -14,7 +15,8 @@ class Chat extends StatefulWidget {
 
 class _ChatState extends State<Chat> {
   Conversation? _selectedConversation;
-
+  bool _isSearching = false;
+  TextEditingController _searchController = TextEditingController();
   @override
   void initState() {
     super.initState();
@@ -22,9 +24,6 @@ class _ChatState extends State<Chat> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
       chatProvider.loadConversations();
-      
-      // Connect to socket (replace with your server URL)
-      // chatProvider.connect('http://localhost:3000', 'user123');
     });
   }
 
@@ -36,28 +35,17 @@ class _ChatState extends State<Chat> {
       appBar: AppBar(
         title: const Text(
           'Tin nhắn',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold),      
         ),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Implement search
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // TODO: Implement menu
-            },
-          ),
-        ],
+        elevation: 4,
+        backgroundColor: Colors.white12,
       ),
-      body: LayoutBuilder(
+
+      body: Padding( 
+        padding: const EdgeInsets.only(top: 20 , left: 10 ,right: 10),
+        child: LayoutBuilder(
         builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 700;
-          
+          final isWide = constraints.maxWidth > 700;         
           return Consumer<ChatProvider>(
             builder: (context, chatProvider, child) {
               if (chatProvider.conversations.isEmpty) {
@@ -66,6 +54,48 @@ class _ChatState extends State<Chat> {
 
               final conversationsList = Column(
                 children: [
+                    Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(255, 190, 205, 230),
+                      border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            height: _isSearching ? 40 : 0,
+                            child: _isSearching
+                                ? TextField(
+                                    controller: _searchController,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Tìm kiếm cuộc trò chuyện...',
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                    onChanged: (value) {
+                                      
+                                    },
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(_isSearching ? Icons.close : Icons.search),
+                          onPressed: () {
+                            setState(() {
+                              _isSearching = !_isSearching;
+                              if (!_isSearching) {
+                                _searchController.clear();  
+                                
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                   // Connection status indicator
                   if (!chatProvider.isConnected)
                     _buildConnectionStatus(),
@@ -91,7 +121,6 @@ class _ChatState extends State<Chat> {
               if (isWide) {
                 return Row(
                   children: [
-                    // Left Column: Conversations List
                     SizedBox(
                       width: 350,
                       child: Container(
@@ -101,7 +130,10 @@ class _ChatState extends State<Chat> {
                         child: conversationsList,
                       ),
                     ),
-                    
+                    Padding(
+                       padding: const EdgeInsets.symmetric(horizontal: 10),  
+                    ),
+                   
                     // Right Column: Chat Detail
                     Expanded(
                       child: _selectedConversation != null
@@ -126,12 +158,7 @@ class _ChatState extends State<Chat> {
           );
         },
       ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     // TODO: Navigate to new chat screen
-      //   },
-      //   child: const Icon(Icons.edit),
-      // ),
+    )
     );
   }
 
@@ -163,7 +190,7 @@ class _ChatState extends State<Chat> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected && isWide ? Colors.blue[50] : null,
+          color: isSelected && isWide ? const Color.fromARGB(46, 191, 197, 224) : null,
           border: Border(
             bottom: BorderSide(color: Colors.grey[200]!),
           ),
@@ -176,19 +203,19 @@ class _ChatState extends State<Chat> {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: Colors.grey[300],
-                  child: otherUser?.avatar != null
+                  child: otherUser?.avartarUrl != null
                       ? ClipOval(
                           child: Image.network(
-                            otherUser!.avatar!,
+                            otherUser!.avartarUrl!,
                             width: 56,
                             height: 56,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return _buildDefaultAvatar(otherUser.name);
+                              return _buildDefaultAvatar(otherUser.username);
                             },
                           ),
                         )
-                      : _buildDefaultAvatar(otherUser?.name ?? '?'),
+                      : _buildDefaultAvatar(otherUser?.username ?? '?'),
                 ),
                 if (otherUser?.isOnline ?? false)
                   Positioned(
@@ -339,7 +366,6 @@ class _ChatState extends State<Chat> {
   String _formatTime(DateTime time) {
     final now = DateTime.now();
     final difference = now.difference(time);
-
     if (difference.inDays == 0) {
       return DateFormat('HH:mm').format(time);
     } else if (difference.inDays == 1) {
