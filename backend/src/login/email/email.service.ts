@@ -1,0 +1,36 @@
+import { Inject, Injectable } from "@nestjs/common";
+import type { Database } from "src/database/database.types";
+import { UsersController } from "src/users/users.controller";
+import { UsersService } from "src/users/users.service";
+
+@Injectable()
+export class EmailService {
+    constructor(
+        @Inject('POSTGRES_POOL')
+        private readonly sql: Database,
+        private readonly usersService: UsersService
+    ) { }
+
+    async createEmail(username: string, email: string, hash_password: string) {
+        const uuid = generateUUID();
+        const user_id = await this.usersService.getUserByUsername(username);
+        console.log(hash_password);
+        await this.sql`
+            insert into login_by_email(id, idUser, email, hash_password)
+            values(${uuid}, ${user_id}, ${email}, ${hash_password})`;
+    }
+
+    async getPassword(username: string) {
+        const user_id = await this.usersService.getUserByUsername(username);
+        const data = await this.sql`
+            select * from login_by_email
+            where idUser = (${user_id})`;
+        return data[0]['hash_password'] ?? null;
+    }
+}
+function generateUUID(): string {
+    return 'xxxxyxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}

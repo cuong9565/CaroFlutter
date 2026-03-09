@@ -1,9 +1,9 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post, Delete, Put, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   // /users/create-guest
   @Post('/create-guest')
@@ -14,6 +14,17 @@ export class UsersController {
     };
   }
 
+  @Post('/create-user-email')
+  async createUserEmail(@Query('username') username: string) {
+    await this.usersService.createUserEmail(username, 1);
+  }
+
+  @Get('/get-user-email')
+  async getUserEmail(@Query('username') username: string) {
+    const data = await this.usersService.getUserByUsername(username);
+    return { data: data }
+  }
+
   // /users/get
   @Get('/get/:id')
   async getUser(@Param('id') id: string) {
@@ -21,5 +32,18 @@ export class UsersController {
     return {
       user: dataUser,
     };
+  }
+
+  @Delete('/delete-guest/:id')
+  async deleteUser(@Param('id') id: string) {
+    const dataUser = await this.usersService.deleteUser(id);
+    return {
+      user: dataUser,
+    }
+  }
+
+  @Put('/update-guest/:id')
+  async updateUser(@Param('id') id: string) {
+
   }
 }

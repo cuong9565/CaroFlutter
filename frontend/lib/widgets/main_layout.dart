@@ -242,7 +242,7 @@ void _showPopOverUser(BuildContext btnContext) {
     () {
       Navigator.of(btnContext).pop();
     },
-    () {},
+    () {btnContext.go("/login");},
     () {},
   ];
   final List<IconData> iconDatas = [
