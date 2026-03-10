@@ -19,10 +19,10 @@ export class UsersService {
     return data[0] ?? null;
   }
 
-  async createUserEmail(username: string, type_login: number) {
+  async createUserEmail(username: string) {
     const data = await this.sql`
       insert into users(username, type_login)
-      values(${username}, ${type_login})`;
+      values(${username}, 1)`;
   }
 
   async getUserByUsername(username: string) {

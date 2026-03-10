@@ -1,5 +1,7 @@
 import 'package:encrypter/encrypter/xor.dart';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/providers/login_with_email_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class Signin extends StatefulWidget {
   const Signin({super.key});
@@ -249,6 +251,7 @@ class _SignInState extends State<Signin> {
       );
     } else {
       _encryptPassword = XOR().xorEncode(_password);
+      LoginWithEmailProvider().createEmail(_username, _email, _encryptPassword);
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -264,6 +267,7 @@ class _SignInState extends State<Signin> {
           ],
         ),
       );
+      context.go('/login');
     }
   }
 }

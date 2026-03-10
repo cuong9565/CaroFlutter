@@ -16,7 +16,7 @@ export class UsersController {
 
   @Post('/create-user-email')
   async createUserEmail(@Query('username') username: string) {
-    await this.usersService.createUserEmail(username, 1);
+    await this.usersService.createUserEmail(username);
   }
 
   @Get('/get-user-email')
