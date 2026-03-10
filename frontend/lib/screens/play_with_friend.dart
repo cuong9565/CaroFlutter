@@ -7,115 +7,227 @@ import 'package:frontend/widgets/buttons/button.dart';
 import 'package:frontend/widgets/layout/frame.dart';
 import 'package:frontend/widgets/layout/my_custom_paint.dart';
 import 'package:frontend/widgets/layout/my_divider.dart';
+import 'package:frontend/widgets/layout/my_error.dart';
+import 'package:frontend/widgets/layout/my_loading.dart';
+import 'package:frontend/widgets/layout/my_qr.dart';
 import 'package:go_router/go_router.dart';
 
-class GameOnline extends ConsumerStatefulWidget {
-  const GameOnline({super.key});
+class PlayWithFriend extends ConsumerStatefulWidget {
+  final String idRoom;
+  const PlayWithFriend({super.key, required this.idRoom});
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _GameOnlineState();
+  ConsumerState<ConsumerStatefulWidget> createState() => _PlayWithFriendState();
 }
 
-class _GameOnlineState extends ConsumerState<GameOnline> {
-  late bool currMoveIsX;
-  late bool isYourTurn;
-  int status = -1; // -1: Chưa đấu xong, 0 => Thắng, 1 => Thua, 2 => Hòa
+class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
+  late String idRoom;
+  late String idUser;
+  String startGame = ""; // "" || "QR" || ERROR || PLAY
+  int isUserReady = 0; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
+  int isYouReady = 0;
+
+  // FOR GAME--------------------------------------------------------------------------------------
+  late bool yourX;
+  late bool yourTurn;
+  int stateGame = -1; // -1: Chưa đấu xong, 0 => Thắng, 1 => Thua, 2 => Hòa
+  bool isOverLay = false;
+  late int yourRationWin, yourRationLoose, yourRationDraw;
+  late int opponentRationWin, opponentRationLoose, opponentRationDraw;
   final int gridSize = 16;
   final double cellSize = 25;
 
   Offset? hoverCell;
   Set<Offset> visitedX = {};
   Set<Offset> visitedO = {};
-
-  String? idRoom;
-  late Function(dynamic) joinRoomListener, onYourMove, onOpponentOutRoom;
+  // -----------------------------------------------------------------------------------------------
 
   @override
   void initState() {
     super.initState();
+    idRoom = widget.idRoom;
     // Lắng nghe khi userNotifier thay đổi
     ref.listenManual(userNotifier, (previous, next) {
       if (next.hasValue) {
-        _connectSocket(next.value);
+        _initOnceSocket(next.value);
       }
     });
 
     // Khi widget được khởi tạo
     final current = ref.read(userNotifier);
     if (current.hasValue) {
-      _connectSocket(current.value);
+      _initOnceSocket(current.value);
     }
   }
 
-  @override
-  void dispose() {
-    SocketService.socket.emit('out-room');
-    super.dispose();
+  void _initOnceSocket(Map<String, dynamic>? valueUserGlobal) {
+    idUser = valueUserGlobal!['user']['id'];
+    SocketService.socket.off('response-start-game');
+    SocketService.socket.on('response-start-game', (data) {
+      if (!mounted) return;
+      // data: { state: String = "" || "QR" || ERROR || PLAY || WAITING "Xu ly cho doi thu" || ENDGAME }
+      setState(() {
+        startGame = data['state'];
+
+        if (data['state'] == "PLAY" || data['state'] == "LOAD") {
+          // data: { yourTurn: true || false; yourX: true || false; board: number[][] }
+          // yourTurn,
+          // yourX,
+          // board: request.match?.boards,
+          // stateGame:
+          yourTurn = data['yourTurn'];
+          yourX = data['yourX'];
+          stateGame = data['stateGame'];
+          isUserReady = data['isUserReady'];
+          isYouReady = data['isYouReady'];
+          yourRationWin = data['yourRation']['win'];
+          yourRationLoose = data['yourRation']['loose'];
+          yourRationDraw = data['yourRation']['draw'];
+          opponentRationWin = data['opponentRation']['win'];
+          opponentRationLoose = data['opponentRation']['loose'];
+          opponentRationDraw = data['opponentRation']['draw'];
+
+          if (isOverLay) {
+            isOverLay = false;
+            Navigator.pop(context);
+          }
+
+          List<List<int>> boards = (data['board'] as List)
+              .map((row) => List<int>.from(row))
+              .toList();
+
+          Set<Offset> newVisitedX = {};
+          Set<Offset> newVisitedO = {};
+
+          for (int i = 0; i < boards.length; i++) {
+            for (int j = 0; j < boards[i].length; j++) {
+              if (boards[i][j] == 0) {
+                newVisitedX.add(Offset(i.toDouble(), j.toDouble()));
+              } else if (boards[i][j] == 1) {
+                newVisitedO.add(Offset(i.toDouble(), j.toDouble()));
+              }
+            }
+          }
+
+          visitedX = newVisitedX;
+          visitedO = newVisitedO;
+        }
+      });
+    });
+
+    SocketService.socket.off('response-on-move');
+    SocketService.socket.on('response-on-move', (data) {
+      if (!mounted) return;
+      setState(() {
+        if (data['state'] == "ENDGAME") {
+          yourTurn = false;
+          yourRationWin = data['yourRation']['win'];
+          yourRationLoose = data['yourRation']['loose'];
+          yourRationDraw = data['yourRation']['draw'];
+          opponentRationWin = data['opponentRation']['win'];
+          opponentRationLoose = data['opponentRation']['loose'];
+          opponentRationDraw = data['opponentRation']['draw'];
+          stateGame = data['result'];
+          if (stateGame != 0) {
+            if (!yourX) {
+              visitedX = {
+                ...visitedX,
+                Offset(
+                  data['lastTurn']['x'].toDouble(),
+                  data['lastTurn']['y'].toDouble(),
+                ),
+              };
+            } else {
+              visitedO = {
+                ...visitedO,
+                Offset(
+                  data['lastTurn']['x'].toDouble(),
+                  data['lastTurn']['y'].toDouble(),
+                ),
+              };
+            }
+          }
+          return;
+        }
+        yourTurn = true;
+        if (!yourX) {
+          visitedX = {
+            ...visitedX,
+            Offset(data['x'].toDouble(), data['y'].toDouble()),
+          };
+        } else {
+          visitedO = {
+            ...visitedO,
+            Offset(data['x'].toDouble(), data['y'].toDouble()),
+          };
+        }
+      });
+    });
+
+    SocketService.socket.off('response-out-room');
+    SocketService.socket.on('response-out-room', (data) {
+      context.go('/');
+    });
+
+    SocketService.socket.off('response-playagain');
+    SocketService.socket.on('response-playagain', (data) {
+      setState(() {
+        if (isOverLay) {
+          Navigator.pop(context);
+          isOverLay = false;
+        }
+        isUserReady = 1;
+      });
+    });
+
+    SocketService.socket.emit('request-start-game', {
+      'idRoom': idRoom,
+      'idUser': idUser,
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (idRoom == null) {
-      // Chưa tìm được người chơi
+    if (startGame.isEmpty) return MyLoading(text: "");
+    if (startGame == "ERROR") return MyErrorPageURL();
+    if (startGame == "QR") {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: 25,
-          children: [
-            Text(
-              "Đang tìm một người chơi...",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w300,
-                color: Colors.grey.shade600,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 10,
+            children: [
+              Text(
+                "Quét mã QR hoặc truy cập vào trang",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
-            ),
-
-            CircularProgressIndicator(),
-            ButtonNormal(
-              text: "Thoát",
-              onPressed: () => {
-                SocketService.socket.emit('out-room'),
-                context.go("/"),
-              },
-            ),
-          ],
+              SelectableText(
+                GoRouterState.of(context).uri.toString(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+              ),
+              MyQR(url: GoRouterState.of(context).uri.toString()),
+              ElevatedButton(
+                onPressed: () {
+                  SocketService.socket.emit('request-out-room', {
+                    'idRoom': idRoom,
+                    'idUser': idUser,
+                  });
+                  context.go('/');
+                },
+                child: Text('Thoát'),
+              ),
+            ],
+          ),
         ),
       );
     }
-    if (status != -1) {
-      // Đã kết thúc trận đấu
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        String str = "";
-        if (status == 0) {
-          str = "Bạn đã thắng";
-        } else if (status == 1)
-          str = "Bạn đã thua";
-        else if (status == 2)
-          str = "Bạn đã hòa";
-        showDialog(
-          barrierDismissible: false,
-          context: context,
-          builder: (context) {
-            return Center(
-              child: Column(
-                spacing: 10,
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(str, style: TextStyle(fontSize: 20, color: Colors.red)),
-                  ButtonNormal(text: "Chơi lại", onPressed: () {}),
-                  ButtonNormal(
-                    text: "Rời khỏi phòng",
-                    onPressed: () {
-                      Navigator.pop(context);
-                      context.go('/');
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
-        );
+    // Nếu trận đấu đã kết thúc
+    if (stateGame != -1 && !isOverLay) {
+      stateEndGame();
+      setState(() {
+        isOverLay = true;
       });
     }
 
@@ -132,7 +244,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                     Row(
                       // spacing: 2,
                       children: [
-                        currMoveIsX
+                        yourX
                             ? MyCustomPaintX(size: 25)
                             : MyCustomPaintO(size: 25),
                       ],
@@ -167,7 +279,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                         ),
                         CircleCountDown(size: 40, seconds: 5),
                         Text(
-                          "0",
+                          yourRationWin.toString(),
                           style: TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w700,
@@ -183,7 +295,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                           ),
                         ),
                         Text(
-                          "0",
+                          opponentRationWin.toString(),
                           style: TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w700,
@@ -218,7 +330,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                     ),
                     Row(
                       children: [
-                        !currMoveIsX
+                        !yourX
                             ? MyCustomPaintX(size: 25)
                             : MyCustomPaintO(size: 25),
                       ],
@@ -245,7 +357,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                             child: Center(
                               child: MouseRegion(
                                 onHover: (event) {
-                                  if (!isYourTurn) {
+                                  if (!yourTurn) {
                                     hoverCell = null;
                                     return;
                                   }
@@ -290,7 +402,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                                           visitedX,
                                           visitedO,
                                           hoverCell,
-                                          currMoveIsX,
+                                          yourX,
                                         ),
                                   ),
                                 ),
@@ -324,10 +436,10 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                                 ),
                                 TextButton(
                                   onPressed: () => {
-                                    SocketService.socket.emit('on-out-room', {
-                                      'roomId': idRoom,
-                                      'idUserLose': data?['user']['id'],
-                                    }),
+                                    SocketService.socket.emit(
+                                      'request-out-room',
+                                      {'idRoom': idRoom, 'idUser': idUser},
+                                    ),
                                     context.go('/'),
                                   },
                                   child: const Text('Hủy bỏ ván đấu'),
@@ -362,73 +474,8 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
         );
   }
 
-  void _connectSocket(dynamic data) {
-    joinRoomListener = (data) {
-      if (!mounted) return;
-      setState(() {
-        idRoom = data['idRoom'];
-        isYourTurn = data['isYourTurn'];
-        currMoveIsX = data['isYourTurn'];
-      });
-    };
-    onYourMove = (data) {
-      if (!mounted) return;
-      if (data['status'] == true) {
-        setState(() {
-          status = data['result'];
-          if (status != 0) {
-            if (!currMoveIsX) {
-              visitedX = {
-                ...visitedX,
-                Offset(
-                  data['lastTurn']['x'].toDouble(),
-                  data['lastTurn']['y'].toDouble(),
-                ),
-              };
-            } else {
-              visitedO = {
-                ...visitedO,
-                Offset(
-                  data['lastTurn']['x'].toDouble(),
-                  data['lastTurn']['y'].toDouble(),
-                ),
-              };
-            }
-          }
-        });
-        return;
-      }
-
-      setState(() {
-        isYourTurn = true;
-        if (!currMoveIsX) {
-          visitedX = {
-            ...visitedX,
-            Offset(data['x'].toDouble(), data['y'].toDouble()),
-          };
-        } else {
-          visitedO = {
-            ...visitedO,
-            Offset(data['x'].toDouble(), data['y'].toDouble()),
-          };
-        }
-      });
-    };
-    onOpponentOutRoom = (data) {
-      if (!mounted) return;
-      context.go('/');
-    };
-    final id = ref.read(userNotifier).value;
-    SocketService.socket.on('join-room', joinRoomListener);
-    SocketService.socket.on('your-turn-move', onYourMove);
-    SocketService.socket.on('opponent-out-room', onOpponentOutRoom);
-    SocketService.socket.emit('request-play-game-online', {
-      'idUser': id!['user']['id'],
-    });
-  }
-
   void _handelOnTapUp(TapUpDetails details) {
-    if (!isYourTurn) return;
+    if (!yourTurn) return;
     final locationPostion = details.localPosition;
     int row = (locationPostion.dy / cellSize).floor();
     int col = (locationPostion.dx / cellSize).floor();
@@ -439,19 +486,136 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
         !visitedX.contains(Offset(row.toDouble(), col.toDouble())) &&
         !visitedO.contains(Offset(row.toDouble(), col.toDouble()))) {
       setState(() {
-        if (currMoveIsX) {
+        if (yourX) {
           visitedX = {...visitedX, Offset(row.toDouble(), col.toDouble())};
         } else {
           visitedO = {...visitedO, Offset(row.toDouble(), col.toDouble())};
         }
-        isYourTurn = false;
+        yourTurn = false;
         hoverCell = null;
-        SocketService.socket.emit('on-move', {
-          'roomId': idRoom,
+        SocketService.socket.emit('request-on-move', {
+          'idRoom': idRoom,
+          'idUser': idUser,
           'x': row,
           'y': col,
         });
       });
     }
+  }
+
+  void stateEndGame() {
+    // Đã kết thúc trận đấu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      String str = "";
+      switch (stateGame) {
+        case 0:
+          str = "Bạn đã thắng";
+          break;
+        case 1:
+          str = "Bạn đã thua";
+          break;
+        case 2:
+          str = "Bạn đã hòa";
+          break;
+      }
+      showDialog(
+        barrierDismissible: false,
+        context: context,
+        builder: (context) {
+          return isYouReady == 1
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      spacing: 10,
+                      children: [
+                        Text(
+                          "Đang chờ đối thủ...",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            SocketService.socket.emit('request-out-room', {
+                              'idRoom': idRoom,
+                              'idUser': idUser,
+                            });
+                            context.go('/');
+                          },
+                          child: Text('Rời khỏi phòng'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Center(
+                  child: Column(
+                    spacing: 10,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        str,
+                        style: TextStyle(fontSize: 20, color: Colors.red),
+                      ),
+
+                      isUserReady == 0
+                          ? Text(
+                              "Đối thủ chưa sẵn sàng",
+                              style: TextStyle(fontSize: 20, color: Colors.red),
+                            )
+                          : isUserReady == 1
+                          ? Text(
+                              "Đối thủ đã sẵn sàng",
+                              style: TextStyle(fontSize: 20, color: Colors.red),
+                            )
+                          : Text(
+                              "Đối thủ đã thoát",
+                              style: TextStyle(fontSize: 20, color: Colors.red),
+                            ),
+
+                      ButtonNormal(
+                        text: "Chơi lại",
+                        onPressed: () {
+                          SocketService.socket.emit('request-playagain', {
+                            'idRoom': idRoom,
+                            'idUser': idUser,
+                          });
+                          if (isUserReady == 0) {
+                            setState(() {
+                              isYouReady = 1;
+                            });
+                            isOverLay = false;
+                            Navigator.pop(context);
+                          } else {
+                            setState(() {
+                              startGame = "";
+                              isOverLay = false;
+                              Navigator.pop(context);
+                            });
+                          }
+                        },
+                      ),
+                      ButtonNormal(
+                        text: "Rời khỏi phòng",
+                        onPressed: () {
+                          Navigator.pop(context);
+                          context.go('/');
+                          SocketService.socket.emit('request-out-room', {
+                            'idRoom': idRoom,
+                            'idUser': idUser,
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                );
+        },
+      );
+    });
   }
 }
