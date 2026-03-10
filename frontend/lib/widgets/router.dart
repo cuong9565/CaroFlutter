@@ -6,13 +6,20 @@ import 'package:frontend/screens/game_online.dart';
 import 'package:frontend/screens/game.dart';
 import 'package:frontend/screens/history.dart';
 import 'package:frontend/screens/home.dart';
+<<<<<<< HEAD
 import 'package:frontend/screens/login.dart';
 import 'package:frontend/screens/signin.dart';
+=======
+import 'package:frontend/screens/play_with_friend.dart';
+import 'package:frontend/widgets/layout/my_error.dart';
+>>>>>>> 8bb4c0dc234d87d605ff3dff8909888970b345cd
 import 'package:frontend/widgets/main_layout.dart';
 import 'package:go_router/go_router.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/',
+  errorBuilder: (context, state) =>
+      SafeArea(child: Scaffold(body: MyErrorPageURL())),
   routes: [
     ShellRoute(
       builder: (context, state, child) {
@@ -37,12 +44,22 @@ final GoRouter router = GoRouter(
       builder: (_, _) => const SafeArea(child: Scaffold(body: GameOnline())),
     ),
     GoRoute(
+<<<<<<< HEAD
       path: '/login',
       builder: (_, _) => const SafeArea(child: Scaffold(body: Login())),
     ),
     GoRoute(
       path: '/signin',
       builder: (_, _) => const SafeArea(child: Scaffold(body: Signin())),
+=======
+      path: '/play/:idRoom',
+      builder: (context, state) {
+        final idRoom = state.pathParameters['idRoom']!;
+        return SafeArea(
+          child: Scaffold(body: PlayWithFriend(idRoom: idRoom)),
+        );
+      },
+>>>>>>> 8bb4c0dc234d87d605ff3dff8909888970b345cd
     ),
   ],
 );
