@@ -8,6 +8,7 @@ class UserModel {
   final int totalWins;
   final int totalDraws;
   final int totalLosses;
+  final bool isOnline;
 
   UserModel({
     required this.id,
@@ -19,6 +20,7 @@ class UserModel {
     required this.totalWins,
     required this.totalDraws,
     required this.totalLosses,
+    this.isOnline = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -27,11 +29,29 @@ class UserModel {
       username: json['username'],
       typeLogin: json['type_login'],
       avartarUrl: json['avartar_url'],
-      rating: json['rating'],
+      rating: json['rating']?.toDouble(),
       totalMatches: json['total_matches'],
       totalWins: json['total_wins'],
       totalDraws: json['total_draws'],
       totalLosses: json['total_losses'],
+      isOnline: json['online'] ?? false,
     );
   }
+
+  Map<String , dynamic> toJson(){
+    return  {
+      'id' : id,
+      'name' : username,
+      'type_login' : typeLogin,
+      'avatar': avartarUrl,
+      'rating': rating,
+      'total_matches': totalMatches,
+      'total_wins': totalWins,
+      'total_draws': totalDraws,
+      'total_losses': totalLosses,
+      'isOnline': isOnline,
+    };
+  }
+
+
 }
