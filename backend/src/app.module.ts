@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { B2Module } from './b2/b2.module';
 import { MatchesPlayerModule } from './matches_player/matches_player.module';
 import { GameModule } from './game/game.module';
+import { MatchModule } from './match/match.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { GameModule } from './game/game.module';
     B2Module,
     GameModule,
     MatchesPlayerModule,
+    MatchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

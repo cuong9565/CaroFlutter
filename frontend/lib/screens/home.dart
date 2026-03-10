@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:frontend/core/notifiers/user_notifier.dart';
+import 'package:frontend/core/services/socket_service.dart';
 import 'package:frontend/widgets/buttons/button.dart';
 import 'package:frontend/widgets/charts/circle_chart.dart';
 import 'package:frontend/widgets/charts/linear_chart.dart';
+import 'package:frontend/widgets/layout/my_loading.dart';
 import 'package:frontend/widgets/layout/pop_up_layout.dart';
 import 'package:frontend/widgets/rules/rules.dart';
 import 'package:go_router/go_router.dart';
@@ -35,7 +39,7 @@ class Home extends StatelessWidget {
                     Expanded(
                       child: Column(
                         spacing: 10,
-                        children: [_GameMode(), _Ranking()],
+                        children: [GameMode(), _Ranking()],
                       ),
                     ),
                     Container(
@@ -52,7 +56,7 @@ class Home extends StatelessWidget {
               return (Column(
                 spacing: 20,
                 children: [
-                  _GameMode(),
+                  GameMode(),
                   _Ranking(),
                   _GameProcess(),
                   _GameRules(),
@@ -66,7 +70,17 @@ class Home extends StatelessWidget {
   }
 }
 
-class _GameMode extends StatelessWidget {
+// ----------------------------------------
+// Game mode UI
+// ----------------------------------------
+class GameMode extends ConsumerStatefulWidget {
+  const GameMode({super.key});
+
+  @override
+  ConsumerState<ConsumerStatefulWidget> createState() => _GameMode();
+}
+
+class _GameMode extends ConsumerState<GameMode> {
   // Danh sách icon cho nút bấm
   final List<IconData> _iconButton = [
     FontAwesomeIcons.userGroup,
@@ -80,9 +94,33 @@ class _GameMode extends StatelessWidget {
     "Chơi trực tuyến",
   ];
   // Danh sách chức năng cho nút bấm
-  final List<void Function(BuildContext)> _functionButton = [
+  late final List<void Function(BuildContext)> _functionButton = [
     (BuildContext context) {
-      _navigateToPlayWithFriend(context);
+      // Lắng nghe khi userNotifier thay đổi
+      ref.listenManual(userNotifier, (previous, next) {
+        if (next.hasValue) {
+          SocketService.socket.emit('request-create-room', {
+            'idUser': next.value!['user']['id'],
+          });
+        }
+      });
+
+      // Khi widget được khởi tạo
+      final current = ref.read(userNotifier);
+      if (current.hasValue) {
+        SocketService.socket.emit('request-create-room', {
+          'idUser': current.value!['user']['id'],
+        });
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.white,
+        builder: (context) {
+          return MyLoading(text: "");
+        },
+      );
     },
     (BuildContext context) {},
     (BuildContext context) {
@@ -110,6 +148,32 @@ class _GameMode extends StatelessWidget {
       _funtionHelperLayout(btnContext, 80, "Chơi trực tuyến", txts);
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Lắng nghe khi userNotifier thay đổi
+    ref.listenManual(userNotifier, (previous, next) {
+      if (next.hasValue) {
+        _initOnceSocket();
+      }
+    });
+
+    // Khi widget được khởi tạo
+    final current = ref.read(userNotifier);
+    if (current.hasValue) {
+      _initOnceSocket();
+    }
+  }
+
+  void _initOnceSocket() {
+    SocketService.socket.off('response-create-room');
+    SocketService.socket.once('response-create-room', (data) {
+      if (!mounted) return;
+      final String idRoom = data['idRoom'];
+      context.go('/play/$idRoom');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

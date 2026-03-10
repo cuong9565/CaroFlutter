@@ -75,3 +75,133 @@ export type DataSendOnOutRoom = {
   roomId: string;
   idUserLose: string;
 };
+
+export type RequestCreateRoomType = {
+  idRoom?: string;
+  idUser: string;
+  socketUser: Socket;
+};
+
+export type RoomsType = {
+  [idRoom: string]: {
+    user: {
+      0: {
+        idUser: string;
+        socketUser: Socket;
+      };
+      1?: {
+        idUser?: string;
+        socketUser?: Socket;
+      };
+    };
+    match: {
+      id: string;
+      userTurn: number; // 0 || 1
+      userX: number; // 0 || 1
+      boards: number[][]; // -1: null, 0: X, 1: O
+      stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
+      isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
+      isU1Ready: number;
+    }[];
+    ratio: {
+      0: {
+        win: number;
+        loose: number;
+        draw: number;
+      };
+      1: {
+        win: number;
+        loose: number;
+        draw: number;
+      };
+    };
+  };
+};
+
+export type RequestStartGameType = {
+  idRoom: string;
+  idUser: string;
+};
+
+export type RequestParamStartGameType = {
+  idRoom: string;
+  idUser: string;
+  socketUser: Socket;
+};
+
+export type ResponseStartGameType = {
+  state: string;
+  user?: {
+    0: {
+      idUser: string;
+      socketUser: Socket;
+    };
+    1?: {
+      idUser?: string;
+      socketUser?: Socket;
+    };
+  };
+  match?: {
+    id: string;
+    userTurn: number; // 0 || 1
+    userX: number; // 0 || 1
+    boards: number[][];
+    stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
+    isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
+    isU1Ready: number;
+  };
+  userTurn?: number;
+  userX?: number;
+  ratio?: {
+    0: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+    1: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+  };
+};
+
+export type RequestOnMove = {
+  idRoom: string;
+  idUser: string;
+  x: number;
+  y: number;
+};
+
+export type ResponseOnMovePosition = {
+  state: string;
+  socketUser?: Socket;
+  x?: number;
+  y?: number;
+  client1?: {
+    idUser: string;
+    socket: Socket;
+    result: number; // 0 => Thắng, 1 => Thua, 2 => Hòa
+  };
+  client2?: {
+    idUser: string;
+    socket: Socket;
+    result: number; // 0 => Thắng, 1 => Thua, 2 => Hòa
+  };
+  ratio?: {
+    0: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+    1: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+  };
+  typeLine?: number;
+  top?: Cell;
+  bottom?: Cell;
+  lastTurn?: Cell;
+};
