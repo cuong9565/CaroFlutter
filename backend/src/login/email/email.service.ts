@@ -13,8 +13,8 @@ export class EmailService {
     async createEmail(username: string, email: string, hash_password: string) {
         // const uuid = generateUUID();
         this.usersService.createUserEmail(username);
-        const user_id = await this.usersService.getUserByUsername(username);
-        console.log(hash_password);
+        const user = await this.usersService.getUserByUsername(username);
+        const user_id = user['id'];
         await this.sql`
             insert into login_by_email(idUser, email, hash_password)
             values(${user_id}, ${email}, ${hash_password})`;

@@ -131,6 +131,13 @@ class _SignInState extends State<Signin> {
   }
 
   void check() {
+    bool? check1;
+    LoginWithEmailProvider()
+        .createEmail(_username, _email, _encryptPassword)
+        .then((bool value) {
+          check1 = value;
+        });
+
     if (_username.isEmpty) {
       showDialog(
         context: context,
@@ -251,23 +258,41 @@ class _SignInState extends State<Signin> {
       );
     } else {
       _encryptPassword = XOR().xorEncode(_password);
-      LoginWithEmailProvider().createEmail(_username, _email, _encryptPassword);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text("Alert"),
-          content: Text("OK"),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text("okay"),
-            ),
-          ],
-        ),
-      );
-      context.go('/login');
+      print(check1);
+      if (check1 == true) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Alert"),
+            content: Text("OK"),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text("okay"),
+              ),
+            ],
+          ),
+        );
+        context.go('/login');
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Alert"),
+            content: Text("Username is already used"),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text("okay"),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 }

@@ -1,10 +1,23 @@
+import 'package:encrypter/encrypter/xor.dart';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/providers/login_with_email_provider.dart';
 import 'package:frontend/widgets/buttons/button.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-class Login extends StatelessWidget {
+class Login extends StatefulWidget {
   const Login({super.key});
+
+  @override
+  State<Login> createState() => _LoginState();
+}
+
+class _LoginState extends State<Login> {
+  bool _isVisible = true;
+  bool _check = false;
+  late String _username = "";
+  late String _password = "";
+  late String _decryptPassword = "";
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +26,7 @@ class Login extends StatelessWidget {
         child: Center(
           child: Container(
             width: 500,
-            height: 400,
+            height: 500,
             decoration: BoxDecoration(
               border: Border.all(color: Colors.black),
               borderRadius: BorderRadius.circular(10.0),
@@ -35,6 +48,7 @@ class Login extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.all(5.0),
                   child: TextField(
+                    onChanged: (value) => _username = value,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10.0),
@@ -51,12 +65,24 @@ class Login extends StatelessWidget {
                 Padding(
                   padding: EdgeInsets.all(5.0),
                   child: TextField(
+                    obscureText: _isVisible,
+                    onChanged: (value) {
+                      _password = value;
+                    },
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10.0),
                       ),
                       hintText: 'Password',
                       contentPadding: EdgeInsets.all(10.0),
+                      suffixIcon: IconButton(
+                        onPressed: () => setState(() {
+                          _isVisible = !_isVisible;
+                        }),
+                        icon: Icon(
+                          _isVisible ? Icons.visibility : Icons.visibility_off,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -75,18 +101,72 @@ class Login extends StatelessWidget {
                     ],
                   ),
                 ),
-                ButtonNormal(text: "Submit", onPressed: () {}),
+                ElevatedButton(
+                  child: Text("Submit"),
+                  onPressed: () {
+                    check();
+                  },
+                ),
                 Padding(
                   padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
                   child: Divider(thickness: 2.0, color: Colors.black),
                 ),
-                SignInTest(),
+                // SignInTest(),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  void check() {
+    LoginWithEmailProvider().checkUserEmail(_username).then((value) {
+      _check = value;
+    });
+    print(_check);
+    if (_check == true) {
+      LoginWithEmailProvider().getPassword(_username).then((value) {
+        _decryptPassword = value;
+      });
+      print(_decryptPassword);
+      String decodePassword = XOR().xorDecode(_decryptPassword);
+      print(decodePassword.compareTo(_password));
+      if (decodePassword.compareTo(_password) == 0) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Alert"),
+            content: Text("Welecome"),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text("OK"),
+              ),
+            ],
+          ),
+        );
+        // context.go("/");
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Alert"),
+            content: Text("Not Good"),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 }
 

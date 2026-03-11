@@ -22,7 +22,7 @@ export class UsersController {
   @Get('/get-user-email')
   async getUserEmail(@Query('username') username: string) {
     const data = await this.usersService.getUserByUsername(username);
-    return { data: data }
+    return { id: data }
   }
 
   // /users/get
