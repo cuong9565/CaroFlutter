@@ -1,0 +1,207 @@
+import { Socket } from 'socket.io';
+
+export type QueueGameOnlineType = UserRequestType[];
+
+export type UserRequestType = {
+  idUser: string;
+  socket: Socket;
+};
+
+export type UserIdType = {
+  idUser: string;
+};
+
+export type MatchesType = {
+  firstUser: UserRequestType;
+  secondUser: UserRequestType;
+};
+
+export type RoomsOnlineGameType = {
+  [roomId: string]: {
+    firstUser: UserRequestType;
+    secondUser: UserRequestType;
+    isFirstUserMove: boolean;
+    isX: boolean;
+    board: CellValue[][];
+  };
+};
+
+export type CellValue = null | number;
+
+export type MovePosition = {
+  roomId: string;
+  x: number;
+  y: number;
+};
+
+export type ResponseMovePosition = {
+  status: boolean;
+  client?: UserRequestType;
+  x?: number;
+  y?: number;
+  client1?: {
+    idUser: string;
+    socket: Socket;
+    result: number; // 0 => Thắng, 1 => Thua, 2 => Hòa
+  };
+  client2?: {
+    idUser: string;
+    socket: Socket;
+    result: number; // 0 => Thắng, 1 => Thua, 2 => Hòa
+  };
+  typeLine?: number;
+  top?: Cell;
+  bottom?: Cell;
+  lastTurn?: Cell;
+};
+
+export type Cell = {
+  x: number;
+  y: number;
+};
+
+export type UserOutRoom = {
+  roomId: string;
+  userLose: UserRequestType;
+};
+
+export type ResponseOutRoom = {
+  roomId: string;
+  userWin: UserRequestType;
+  userLose: UserRequestType;
+};
+
+export type DataSendOnOutRoom = {
+  roomId: string;
+  idUserLose: string;
+};
+
+export type RequestCreateRoomType = {
+  idRoom?: string;
+  idUser: string;
+  socketUser: Socket;
+};
+
+export type RoomsType = {
+  [idRoom: string]: {
+    user: {
+      0: {
+        idUser: string;
+        socketUser: Socket;
+      };
+      1?: {
+        idUser?: string;
+        socketUser?: Socket;
+      };
+    };
+    match: {
+      id: string;
+      userTurn: number; // 0 || 1
+      userX: number; // 0 || 1
+      boards: number[][]; // -1: null, 0: X, 1: O
+      stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
+      isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
+      isU1Ready: number;
+    }[];
+    ratio: {
+      0: {
+        win: number;
+        loose: number;
+        draw: number;
+      };
+      1: {
+        win: number;
+        loose: number;
+        draw: number;
+      };
+    };
+  };
+};
+
+export type RequestStartGameType = {
+  idRoom: string;
+  idUser: string;
+};
+
+export type RequestParamStartGameType = {
+  idRoom: string;
+  idUser: string;
+  socketUser: Socket;
+};
+
+export type ResponseStartGameType = {
+  state: string;
+  user?: {
+    0: {
+      idUser: string;
+      socketUser: Socket;
+    };
+    1?: {
+      idUser?: string;
+      socketUser?: Socket;
+    };
+  };
+  match?: {
+    id: string;
+    userTurn: number; // 0 || 1
+    userX: number; // 0 || 1
+    boards: number[][];
+    stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
+    isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
+    isU1Ready: number;
+  };
+  userTurn?: number;
+  userX?: number;
+  ratio?: {
+    0: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+    1: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+  };
+};
+
+export type RequestOnMove = {
+  idRoom: string;
+  idUser: string;
+  x: number;
+  y: number;
+};
+
+export type ResponseOnMovePosition = {
+  state: string;
+  socketUser?: Socket;
+  x?: number;
+  y?: number;
+  client1?: {
+    idUser: string;
+    socket: Socket;
+    result: number; // 0 => Thắng, 1 => Thua, 2 => Hòa
+  };
+  client2?: {
+    idUser: string;
+    socket: Socket;
+    result: number; // 0 => Thắng, 1 => Thua, 2 => Hòa
+  };
+  ratio?: {
+    0: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+    1: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+  };
+  typeLine?: number;
+  top?: Cell;
+  bottom?: Cell;
+  lastTurn?: Cell;
+};
