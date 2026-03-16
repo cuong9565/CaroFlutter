@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../core/models/user_model.dart';
 import '../core/models/conversation_model.dart';
-import '../core/models/message_model.dart';
 import '../core/providers/chat_provider.dart';
 import '../widgets/switch/message_bubble.dart';
 import '../widgets/switch/message_input.dart';
@@ -59,7 +57,7 @@ class _ChatDetailState extends State<ChatDetail> {
   @override
   Widget build(BuildContext context) {
     final chatProvider = Provider.of<ChatProvider>(context);
-    final otherUser = widget.conversation.getOtherUser(chatProvider.currentUserId);
+    final otherUser = widget.conversation.getOtherUser(chatProvider.currentUsername);
     final messages = chatProvider.getMessages(widget.conversation.id);
     final isOtherUserTyping = chatProvider.isTyping(widget.conversation.id);
 
@@ -85,19 +83,7 @@ class _ChatDetailState extends State<ChatDetail> {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: Colors.grey[300],
-                  child: otherUser?.avartarUrl != null
-                      ? ClipOval(
-                          child: Image.network(
-                            otherUser!.avartarUrl!,
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildDefaultAvatar(otherUser.username);
-                            },
-                          ),
-                        )
-                      : _buildDefaultAvatar(otherUser?.username ?? '?'),
+                  child: _buildDefaultAvatar(otherUser),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -105,27 +91,19 @@ class _ChatDetailState extends State<ChatDetail> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.conversation.getOtherUserName(chatProvider.currentUserId),
+                        otherUser,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (otherUser?.isOnline ?? false)
-                        const Text(
-                          'Đang hoạt động',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.green,
-                          ),
-                        ),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: () {},
-                ),
+                // IconButton(
+                //   icon: const Icon(Icons.more_vert),
+                //   onPressed: () {},
+                // ),
               ],
             ),
           ),
@@ -147,11 +125,11 @@ class _ChatDetailState extends State<ChatDetail> {
                       return _buildTypingIndicator();
                     }
                     final message = messages[index];
-                    final isMe = message.sender.id == chatProvider.currentUserId;
+                    final isMe = message.senderUsername == chatProvider.currentUsername;
                     bool showAvatar = true;
                     if (index < messages.length - 1) {
                       final nextMessage = messages[index + 1];
-                      showAvatar = nextMessage.sender.id != message.sender.id;
+                      showAvatar = nextMessage.senderUsername != message.senderUsername;
                     }
                     return MessageBubble(
                       message: message,
@@ -192,19 +170,7 @@ class _ChatDetailState extends State<ChatDetail> {
             CircleAvatar(
               radius: 18,
               backgroundColor: Colors.grey[300],
-              child: otherUser?.avartarUrl != null
-                  ? ClipOval(
-                      child: Image.network(
-                        otherUser!.avartarUrl!,
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildDefaultAvatar(otherUser.username);
-                        },
-                      ),
-                    )
-                  : _buildDefaultAvatar(otherUser?.username ?? '?'),
+              child: _buildDefaultAvatar(otherUser),
             ),
             const SizedBox(width: 12),
             
@@ -214,32 +180,24 @@ class _ChatDetailState extends State<ChatDetail> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.conversation.getOtherUserName(chatProvider.currentUserId),
+                    otherUser,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (otherUser?.isOnline ?? false)
-                    const Text(
-                      'Đang hoạt động',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green,
-                      ),
-                    ),
                 ],
               ),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // TODO: Implement menu
-            },
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.more_vert),
+          //   onPressed: () {
+              
+          //   },
+          // ),
         ],
       ),
       body: content,

@@ -1,10 +1,8 @@
-import 'user_model.dart';
-import 'message_model.dart';
-
 class Conversation {
   final String id;
-  final List<UserModel> participants;
-  final Message? lastMessage;
+  final List<String> participants;
+  final Map<String, dynamic>? lastMessage;
+  final List<Map<String, dynamic>> messages;
   final int unreadCount;
   final DateTime updatedAt;
 
@@ -12,6 +10,7 @@ class Conversation {
     required this.id,
     required this.participants,
     this.lastMessage,
+    required this.messages,
     this.unreadCount = 0,
     required this.updatedAt,
   });
@@ -20,12 +19,14 @@ class Conversation {
     return Conversation(
       id: json['id'] ?? '',
       participants: (json['participants'] as List<dynamic>?)
-              ?.map((p) => UserModel.fromJson(p))
+              ?.map((p) => p as String)
               .toList() ??
           [],
-      lastMessage: json['lastMessage'] != null
-          ? Message.fromJson(json['lastMessage'])
-          : null,
+      lastMessage: json['lastMessage'] as Map<String, dynamic>?,
+      messages: (json['messages'] as List<dynamic>?)
+              ?.map((m) => m as Map<String, dynamic>)
+              .toList() ??
+          [],
       unreadCount: json['unreadCount'] ?? 0,
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
@@ -36,25 +37,18 @@ class Conversation {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'participants': participants.map((p) => p.toJson()).toList(),
-      'lastMessage': lastMessage?.toJson(),
+      'participants': participants,
+      'lastMessage': lastMessage,
+      'messages': messages,
       'unreadCount': unreadCount,
       'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
-  String getOtherUserName(String currentUserId) {
-    final otherUser = participants.firstWhere(
-      (user) => user.id != currentUserId,
-      orElse: () => participants.first,
-    );
-    return otherUser.username;
-  }
-
-  UserModel? getOtherUser(String currentUserId) {
+  String getOtherUser(String currentUsername) {
     return participants.firstWhere(
-      (user) => user.id != currentUserId,
-      orElse: () => participants.first,
+      (p) => p != currentUsername,
+      orElse: () => 'Unknown',
     );
   }
 }

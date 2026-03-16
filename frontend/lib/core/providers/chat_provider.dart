@@ -3,28 +3,35 @@ import '../models/user_model.dart';
 import '../services/socket_service.dart';
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../services/service.dart';
+
 class ChatProvider with ChangeNotifier {
-  final SocketService _socketService = SocketService();
-  
+ 
+  final String _apiUrl = Service.apiUrl ;
   List<Conversation> _conversations = [];
-  Map<String, List<Message>> _conversationMessages = {};
-  Map<String, bool> _typingStatus = {};
+  final Map<String, List<Message>> _conversationMessages = {};
+  final Map<String, bool> _typingStatus = {};
   bool _isConnected = false;
-  String _currentUserId = '';
+  final String _currentUserId = '1a7f2c11-937d-427f-8882-3570a6f706b8';
+  String _currentUsername = '';
 
   List<Conversation> get conversations => _conversations;
   bool get isConnected => _isConnected;
   String get currentUserId => _currentUserId;
+  String get currentUsername => _currentUsername;
 
-  ChatProvider() { 
-    _setupSocketListeners();
+  ChatProvider() {
+    _loadCurrentUser().then((_) {
+      SocketService.init(_currentUserId);
+      _setupSocketListeners();
+    });
   }
 
   void _setupSocketListeners() {
-    _socketService.onMessageReceived = _handleNewMessage;
-    _socketService.onTyping = _handleTyping;
-    _socketService.onUserStatusChanged = _handleUserStatusChanged;
-    
+    SocketService.onNewMessage(_handleNewMessage);
+    SocketService.onConversationHistory(_handleConversationHistory);
   }
 
   void disconnect() {
@@ -43,20 +50,72 @@ class ChatProvider with ChangeNotifier {
     return _typingStatus[conversationId] ?? false;
   }
 
-  // Load conversations (mock data for now)
-  void loadConversations() {
-    // In a real app, this would fetch from an API
-    _conversations = _generateMockConversations();
-    notifyListeners();
+  Future<void> _loadCurrentUser() async {
+    try {
+      final response = await http.get(Uri.parse('$_apiUrl/users/get/$_currentUserId'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final user = UserModel.fromJson(data['user']);
+        _currentUsername = user.username;
+        print('Loaded current username: $_currentUsername');
+      } else {
+        print('Error loading current user: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error loading current user: $e');
+    }
   }
 
-  // Load messages for a conversation (mock data for now)
-  void loadMessages(String conversationId) {
-    if (!_conversationMessages.containsKey(conversationId)) {
-      _conversationMessages[conversationId] = _generateMockMessages(conversationId);
-      notifyListeners();
+  // Load conversations from server
+  Future<void> loadConversations() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiUrl/chat/conversations?userId=$_currentUserId'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final conversationsData = data['conversations'] as List;
+        print('Loaded ${data['count']} conversations from server');
+        final newConversations = conversationsData.map((c) => Conversation.fromJson(c)).toList();
+        print('Parsed ${newConversations.length} conversations');
+        // Populate messages cache
+        for (final conv in newConversations) {
+          final messagesData = conv.messages ?? [];
+          _conversationMessages[conv.id] = messagesData.map((m) => Message.fromJson(m)).toList();
+        }
+        // Check for duplicates
+        final ids = newConversations.map((c) => c.id).toSet();
+        if (ids.length != newConversations.length) {
+          print('Warning: Duplicate conversation IDs detected!');
+          print('IDs: ${newConversations.map((c) => c.id).toList()}');
+        }
+        _conversations = newConversations;
+        notifyListeners();
+      } else {
+        print('Error loading conversations: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error loading conversations: $e');
     }
-    _socketService.joinConversation(conversationId);
+  }
+
+  // Load messages for a conversation from server
+  Future<void> loadMessages(String conversationId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiUrl/chat/conversations/$conversationId/messages'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        _conversationMessages[conversationId] = data.map((m) => Message.fromJson(m)).toList();
+        notifyListeners();
+      } else {
+        print('Error loading messages: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error loading messages: $e');
+    }
+    SocketService.joinConversation(conversationId);
   }
 
   // Send a message
@@ -64,17 +123,7 @@ class ChatProvider with ChangeNotifier {
     final message = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       conversationId: conversationId,
-      sender: UserModel(
-        id: _currentUserId,
-        username: 'You',
-        typeLogin: 0,
-        avartarUrl: null,
-        rating: 0.0,
-        totalMatches: 0,
-        totalWins: 0,
-        totalDraws: 0,
-        totalLosses: 0,
-      ),
+      senderUsername: _currentUsername,
       content: content,
       timestamp: DateTime.now(),
       isSent: false,
@@ -89,25 +138,21 @@ class ChatProvider with ChangeNotifier {
     // Update conversation's last message
     final convIndex = _conversations.indexWhere((c) => c.id == conversationId);
     if (convIndex != -1) {
-      // Note: In a real app, you'd create a new Conversation object with updated lastMessage
+     
     }
     
     notifyListeners();
-
-    // Send via socket
-    _socketService.sendMessage(message);
+    SocketService.sendMessage(conversationId, content, _currentUserId);
   }
 
-  // Handle typing indicator
+
   void setTyping(String conversationId, bool isTyping) {
-    _socketService.sendTyping(conversationId, _currentUserId, isTyping);
+    SocketService.sendTyping(conversationId, _currentUserId, isTyping);
   }
 
   // Mark message as read
   void markAsRead(String conversationId, String messageId) {
-    // _socketService.markAsRead(conversationId, messageId);
-    
-    // Update local message
+
     final messages = _conversationMessages[conversationId];
     if (messages != null) {
       final index = messages.indexWhere((m) => m.id == messageId);
@@ -124,113 +169,19 @@ class ChatProvider with ChangeNotifier {
       _conversationMessages[message.conversationId] = [];
     }
     _conversationMessages[message.conversationId]!.add(message);
-    
-    // Update conversation's last message and move to top
+
     final convIndex = _conversations.indexWhere((c) => c.id == message.conversationId);
     if (convIndex != -1) {
       final conv = _conversations[convIndex];
       _conversations.removeAt(convIndex);
-      // Note: In a real app, create new Conversation with updated lastMessage
       _conversations.insert(0, conv);
     }
     
     notifyListeners();
   }
 
-  void _handleTyping(String conversationId, String userId) {
-    if (userId != _currentUserId) {
-      _typingStatus[conversationId] = true;
-      notifyListeners();
-      
-      // Clear typing status after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        _typingStatus[conversationId] = false;
-        notifyListeners();
-      });
-    }
-  }
-
-  void _handleUserStatusChanged(String userId, bool isOnline) {
-    // Update user status in conversations
-    for (var conv in _conversations) {
-      for (var participant in conv.participants) {
-        if (participant.id == userId) {
-          // Note: In a real app, you'd update the User object
-          notifyListeners();
-          break;
-        }
-      }
-    }
-  }
-
-  // Mock data generators
-  List<Conversation> _generateMockConversations() {
-    return [
-      Conversation(
-        id: '1',
-        participants: [
-          UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0.0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-          UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: true),
-        ],
-        lastMessage: Message(
-          id: '1',
-          conversationId: '1',
-          sender: UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-          content: 'Chào bạn! Chơi cờ caro không?',
-          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-        ),
-        unreadCount: 2,
-        updatedAt: DateTime.now().subtract(const Duration(minutes: 5)),
-      ),
-      Conversation(
-        id: '2',
-        participants: [
-          UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-          UserModel(id: '3', username: 'Trần Thị B', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: false),
-        ],
-        lastMessage: Message(
-          id: '2',
-          conversationId: '2',
-          sender: UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-          content: 'Ok, hẹn gặp lại!',
-          timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
-        unreadCount: 0,
-        updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-    ];
-  }
-
-  List<Message> _generateMockMessages(String conversationId) {
-    final otherUser = UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: true);
-    final now = DateTime.now();
-    
-    return [
-      Message(
-        id: '1',
-        conversationId: conversationId,
-        sender: otherUser,
-        content: 'Chào bạn!',
-        timestamp: now.subtract(const Duration(minutes: 10)),
-        isRead: true,
-      ),
-      Message(
-        id: '2',
-        conversationId: conversationId,
-        sender: UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-        content: 'Chào! Bạn khỏe không?',
-        timestamp: now.subtract(const Duration(minutes: 9)),
-        isRead: true,
-      ),
-      Message(
-        id: '3',
-        conversationId: conversationId,
-        sender: otherUser,
-        content: 'Mình khỏe. Chơi cờ caro không?',
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        isRead: false,
-      ),
-    ];
+  void _handleConversationHistory(List<Message> messages) {
+  
   }
 
   @override
