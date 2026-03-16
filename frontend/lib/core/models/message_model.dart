@@ -1,9 +1,7 @@
-import 'user_model.dart';
-
 class Message {
   final String id;
   final String conversationId;
-  final UserModel sender;
+  final String senderUsername;
   final String content;
   final DateTime timestamp;
   final bool isRead;
@@ -12,7 +10,7 @@ class Message {
   Message({
     required this.id,
     required this.conversationId,
-    required this.sender,
+    required this.senderUsername,
     required this.content,
     required this.timestamp,
     this.isRead = false,
@@ -23,7 +21,7 @@ class Message {
     return Message(
       id: json['id'] ?? '',
       conversationId: json['conversationId'] ?? '',
-      sender: UserModel.fromJson(json['sender'] ?? {}),
+      senderUsername: json['sender'] is String ? json['sender'] : json['sender']['username'] ?? '',
       content: json['content'] ?? '',
       timestamp: json['timestamp'] != null
           ? DateTime.parse(json['timestamp'])
@@ -37,7 +35,7 @@ class Message {
     return {
       'id': id,
       'conversationId': conversationId,
-      'sender': sender.toJson(),
+      'sender': senderUsername,
       'content': content,
       'timestamp': timestamp.toIso8601String(),
       'isRead': isRead,
@@ -48,7 +46,7 @@ class Message {
   Message copyWith({
     String? id,
     String? conversationId,
-    UserModel? sender,
+    String? senderUsername,
     String? content,
     DateTime? timestamp,
     bool? isRead,
@@ -57,7 +55,7 @@ class Message {
     return Message(
       id: id ?? this.id,
       conversationId: conversationId ?? this.conversationId,
-      sender: sender ?? this.sender,
+      senderUsername: senderUsername ?? this.senderUsername,
       content: content ?? this.content,
       timestamp: timestamp ?? this.timestamp,
       isRead: isRead ?? this.isRead,

@@ -6,11 +6,12 @@ class SocketService {
 
   static late io.Socket socket;
 
-  static void init() {
+  static void init(String userId) {
     socket = io.io(
       _apiUrl,
       io.OptionBuilder()
           .setTransports(['websocket'])
+          .setAuth({'userId': userId})
           .disableAutoConnect()
           .build(),
     );
@@ -35,24 +36,31 @@ class SocketService {
     });
   }
 
-  void Function(Message)? onMessageReceived;
-  void Function(String, String)? onTyping; 
-  void Function(String, bool)? onUserStatusChanged;  // userId, isOnline
-
-  void sendMessage(Message message) {
-    socket.emit('send_message', message.toJson());
-  }
-
-  void joinConversation(String conversationId) {
-    socket.emit('join_conversation', { 'conversationId': conversationId });
-  }
-
-  void sendTyping(String conversationId, String userId, bool isTyping) {
-    socket.emit('typing', { 'conversationId': conversationId, 'userId': userId, 'isTyping': isTyping });
-  }
-
   static void disconnect() {
     socket.disconnect();
-    socket.dispose();
+  }
+
+  static void sendMessage(String conversationId, String content, String senderId) {
+    socket.emit('send_message', {'conversationId': conversationId, 'content': content, 'senderId': senderId});
+  }
+
+  static void joinConversation(String conversationId) {
+    socket.emit('join_conversation', {'conversationId': conversationId});
+  }
+
+  static void sendTyping(String conversationId, String userId, bool isTyping) {
+    socket.emit('typing', {'conversationId': conversationId, 'isTyping': isTyping, 'senderId': userId});
+  }
+
+  static void onNewMessage(Function(Message) callback) {
+    socket.on('new_message', (data) {
+      callback(Message.fromJson(data));
+    });
+  }
+
+  static void onConversationHistory(Function(List<Message>) callback) {
+    socket.on('conversation_history', (data) {
+      callback((data as List).map((m) => Message.fromJson(m)).toList());
+    });
   }
 }
