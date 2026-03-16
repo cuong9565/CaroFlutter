@@ -6,11 +6,15 @@ import 'package:frontend/screens/game_online.dart';
 import 'package:frontend/screens/game.dart';
 import 'package:frontend/screens/history.dart';
 import 'package:frontend/screens/home.dart';
+import 'package:frontend/screens/play_with_friend.dart';
+import 'package:frontend/widgets/layout/my_error.dart';
 import 'package:frontend/widgets/main_layout.dart';
 import 'package:go_router/go_router.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/',
+  errorBuilder: (context, state) =>
+      SafeArea(child: Scaffold(body: MyErrorPageURL())),
   routes: [
     ShellRoute(
       builder: (context, state, child) {
@@ -33,6 +37,15 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/game-online',
       builder: (_, _) => const SafeArea(child: Scaffold(body: GameOnline())),
+    ),
+    GoRoute(
+      path: '/play/:idRoom',
+      builder: (context, state) {
+        final idRoom = state.pathParameters['idRoom']!;
+        return SafeArea(
+          child: Scaffold(body: PlayWithFriend(idRoom: idRoom)),
+        );
+      },
     ),
   ],
 );
