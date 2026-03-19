@@ -1,4 +1,5 @@
 import 'package:encrypter/encrypter/xor.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/providers/login_with_email_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -130,14 +131,12 @@ class _SignInState extends State<Signin> {
     );
   }
 
-  void check() {
-    bool? check1;
-    LoginWithEmailProvider()
-        .createEmail(_username, _email, _encryptPassword)
-        .then((bool value) {
-          check1 = value;
-        });
-
+  void check() async {
+    // debugPrint('Submit button pressed');
+    // debugPrint('Username: $_username');
+    // debugPrint('Email: $_email');
+    // debugPrint('Password length: ${_password.length}');
+    // debugPrint('Password again length: ${_passwordAgain.length}');
     if (_username.isEmpty) {
       showDialog(
         context: context,
@@ -154,6 +153,7 @@ class _SignInState extends State<Signin> {
           ],
         ),
       );
+      return;
     }
     if (!RegExp(r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+').hasMatch(_email)) {
       showDialog(
@@ -171,6 +171,7 @@ class _SignInState extends State<Signin> {
           ],
         ),
       );
+      return;
     }
     if (_password.isEmpty) {
       showDialog(
@@ -188,6 +189,7 @@ class _SignInState extends State<Signin> {
           ],
         ),
       );
+      return;
     }
     if (_passwordAgain.isEmpty) {
       showDialog(
@@ -205,6 +207,7 @@ class _SignInState extends State<Signin> {
           ],
         ),
       );
+      return;
     }
     if (_password.length < 8) {
       showDialog(
@@ -222,6 +225,7 @@ class _SignInState extends State<Signin> {
           ],
         ),
       );
+      return;
     }
     if (_passwordAgain.length < 8) {
       showDialog(
@@ -239,6 +243,7 @@ class _SignInState extends State<Signin> {
           ],
         ),
       );
+      return;
     }
     if (_password != _passwordAgain) {
       showDialog(
@@ -256,43 +261,44 @@ class _SignInState extends State<Signin> {
           ],
         ),
       );
+      return;
+    }
+    _encryptPassword = XOR().xorEncode(_password);
+    bool check1 = await LoginWithEmailProvider().createEmail(_username, _email, _encryptPassword);
+    debugPrint('Provider result: $check1');
+    if (check1) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Alert"),
+          content: Text("OK"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("okay"),
+            ),
+          ],
+        ),
+      );
+      context.go('/login');
     } else {
-      _encryptPassword = XOR().xorEncode(_password);
-      print(check1);
-      if (check1 == true) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text("Alert"),
-            content: Text("OK"),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text("okay"),
-              ),
-            ],
-          ),
-        );
-        context.go('/login');
-      } else {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text("Alert"),
-            content: Text("Username is already used"),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text("okay"),
-              ),
-            ],
-          ),
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Alert"),
+          content: Text("Username is already used"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("okay"),
+            ),
+          ],
+        ),
+      );
     }
   }
 }

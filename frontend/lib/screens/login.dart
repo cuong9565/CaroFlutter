@@ -120,24 +120,59 @@ class _LoginState extends State<Login> {
     );
   }
 
-  void check() {
-    LoginWithEmailProvider().checkUserEmail(_username).then((value) {
-      _check = value;
-    });
-    print(_check);
-    if (_check == true) {
-      LoginWithEmailProvider().getPassword(_username).then((value) {
-        _decryptPassword = value;
-      });
-      print(_decryptPassword);
-      String decodePassword = XOR().xorDecode(_decryptPassword);
-      print(decodePassword.compareTo(_password));
-      if (decodePassword.compareTo(_password) == 0) {
+  void check() async {
+    debugPrint('Login submit pressed');
+    debugPrint('Username: $_username');
+    debugPrint('Password length: ${_password.length}');
+    if (_username.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Alert"),
+          content: Text("Username not null"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    if (_password.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Alert"),
+          content: Text("Password not null"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    bool check = await LoginWithEmailProvider().checkUserEmail(_username);
+    debugPrint('User exists: $check');
+    if (check) {
+      String decryptPassword = await LoginWithEmailProvider().getPassword(_username);
+      debugPrint('Encrypted password: $decryptPassword');
+      String decodePassword = XOR().xorDecode(decryptPassword);
+      debugPrint('Decoded password matches input: ${decodePassword == _password}');
+      if (decodePassword == _password) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: Text("Alert"),
-            content: Text("Welecome"),
+            content: Text("Welcome"),
             actions: <Widget>[
               TextButton(
                 onPressed: () {
@@ -154,7 +189,7 @@ class _LoginState extends State<Login> {
           context: context,
           builder: (context) => AlertDialog(
             title: Text("Alert"),
-            content: Text("Not Good"),
+            content: Text("Incorrect password"),
             actions: <Widget>[
               TextButton(
                 onPressed: () {
@@ -166,6 +201,22 @@ class _LoginState extends State<Login> {
           ),
         );
       }
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Alert"),
+          content: Text("User not found"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("OK"),
+            ),
+          ],
+        ),
+      );
     }
   }
 }

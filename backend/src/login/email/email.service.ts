@@ -21,10 +21,17 @@ export class EmailService {
     }
 
     async getPassword(username: string) {
-        const user_id = await this.usersService.getUserByUsername(username);
+        const user = await this.usersService.getUserByUsername(username);
+        if (!user) {
+            return null;
+        }
+        const user_id = user['id'];
         const data = await this.sql`
             select * from login_by_email
-            where idUser = (${user_id})`;
+            where idUser = ${user_id}`;
+        if (data.length === 0) {
+            return null;
+        }
         return data[0]['hash_password'] ?? null;
     }
 }
