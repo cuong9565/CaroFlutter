@@ -131,6 +131,7 @@ class _SignInState extends State<Signin> {
   }
 
   void check() {
+    _encryptPassword = XOR().xorEncode(_password);
     bool? check1;
     LoginWithEmailProvider()
         .createEmail(_username, _email, _encryptPassword)
@@ -257,7 +258,6 @@ class _SignInState extends State<Signin> {
         ),
       );
     } else {
-      _encryptPassword = XOR().xorEncode(_password);
       print(check1);
       if (check1 == true) {
         showDialog(
