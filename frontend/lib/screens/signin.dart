@@ -264,7 +264,11 @@ class _SignInState extends State<Signin> {
       return;
     }
     _encryptPassword = XOR().xorEncode(_password);
-    bool check1 = await LoginWithEmailProvider().createEmail(_username, _email, _encryptPassword);
+    bool check1 = await LoginWithEmailProvider().createEmail(
+      _username,
+      _email,
+      _encryptPassword,
+    );
     debugPrint('Provider result: $check1');
     if (check1) {
       showDialog(

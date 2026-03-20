@@ -13,7 +13,9 @@ void main() async {
   runApp(
     provider.MultiProvider(
       providers: [
-        provider.ChangeNotifierProvider<ChatProvider>(create: (_) => ChatProvider()),
+        provider.ChangeNotifierProvider<ChatProvider>(
+          create: (_) => ChatProvider(),
+        ),
       ],
       child: ProviderScope(
         child: MaterialApp.router(
