@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Query } from '@nestjs/common'
+import { Controller, Delete, Get, Param, Post, Query } from '@nestjs/common'
 import { EmailService } from './email.service';
 
 @Controller('emails')
@@ -14,5 +14,16 @@ export class EmailController {
     async getPassword(@Query('username') username: string) {
         const password = await this.emailSerivce.getPassword(username)
         return { password: password }
+    }
+
+    @Get('/get-email')
+    async getEmail(@Query('id') id: string) {
+        const email = await this.emailSerivce.getEmail(id)
+        return { email: email }
+    }
+
+    @Delete('/delete-email/:id')
+    async deleteEmail(@Param('id') id: string) {
+        await this.emailSerivce.deleteEmail(id);
     }
 }

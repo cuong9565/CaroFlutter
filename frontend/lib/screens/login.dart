@@ -1,9 +1,10 @@
 import 'package:encrypter/encrypter/xor.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:frontend/core/providers/login_with_email_provider.dart';
-import 'package:frontend/widgets/buttons/button.dart';
+import 'package:frontend/screens/login_with_google.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -14,10 +15,8 @@ class Login extends StatefulWidget {
 
 class _LoginState extends State<Login> {
   bool _isVisible = true;
-  bool _check = false;
   late String _username = "";
   late String _password = "";
-  late String _decryptPassword = "";
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +110,7 @@ class _LoginState extends State<Login> {
                   padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
                   child: Divider(thickness: 2.0, color: Colors.black),
                 ),
-                // SignInTest(),
+                SignInTest(),
               ],
             ),
           ),
@@ -121,9 +120,9 @@ class _LoginState extends State<Login> {
   }
 
   void check() async {
-    debugPrint('Login submit pressed');
-    debugPrint('Username: $_username');
-    debugPrint('Password length: ${_password.length}');
+    // debugPrint('Login submit pressed');
+    // debugPrint('Username: $_username');
+    // debugPrint('Password length: ${_password.length}');
     if (_username.isEmpty) {
       showDialog(
         context: context,
@@ -160,13 +159,18 @@ class _LoginState extends State<Login> {
       );
       return;
     }
+    debugPrint(await FlutterSecureStorage().read(key: 'uid'));
     bool check = await LoginWithEmailProvider().checkUserEmail(_username);
-    debugPrint('User exists: $check');
+    // debugPrint('User exists: $check');
     if (check) {
-      String decryptPassword = await LoginWithEmailProvider().getPassword(_username);
-      debugPrint('Encrypted password: $decryptPassword');
+      String decryptPassword = await LoginWithEmailProvider().getPassword(
+        _username,
+      );
+      // debugPrint('Encrypted password: $decryptPassword');
       String decodePassword = XOR().xorDecode(decryptPassword);
-      debugPrint('Decoded password matches input: ${decodePassword == _password}');
+      // debugPrint(
+      //   'Decoded password matches input: ${decodePassword == _password}',
+      // );
       if (decodePassword == _password) {
         showDialog(
           context: context,
@@ -183,7 +187,11 @@ class _LoginState extends State<Login> {
             ],
           ),
         );
-        // context.go("/");
+        String id = await LoginWithEmailProvider().getUserId(_username);
+        // debugPrint(id);
+        await FlutterSecureStorage().write(key: 'uid', value: id);
+        // debugPrint(await FlutterSecureStorage().read(key: 'uid'));
+        context.go("/");
       } else {
         showDialog(
           context: context,
@@ -218,58 +226,5 @@ class _LoginState extends State<Login> {
         ),
       );
     }
-  }
-}
-
-class SignInTest extends StatefulWidget {
-  const SignInTest({super.key});
-
-  @override
-  State<SignInTest> createState() => _SignInTestState();
-}
-
-class _SignInTestState extends State<SignInTest> {
-  GoogleSignInAccount? _user;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeGoogleSignIn();
-  }
-
-  Future<void> _initializeGoogleSignIn() async {
-    // Initialize and listen to authentication events
-    await GoogleSignIn.instance.initialize();
-
-    GoogleSignIn.instance.authenticationEvents.listen((event) {
-      setState(() {
-        _user = switch (event) {
-          GoogleSignInAuthenticationEventSignIn() => event.user,
-          GoogleSignInAuthenticationEventSignOut() => null,
-        };
-      });
-    });
-  }
-
-  Future<void> _signIn() async {
-    try {
-      // Check if platform supports authenticate
-      if (GoogleSignIn.instance.supportsAuthenticate()) {
-        await GoogleSignIn.instance.authenticate(scopeHint: ['email']);
-      } else {
-        // Handle web platform differently
-        print('This platform requires platform-specific sign-in UI');
-      }
-    } catch (e) {
-      print('Sign-in error: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: _signIn,
-      child: Text("Sign In with Google"),
-    );
   }
 }

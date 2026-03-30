@@ -21,4 +21,24 @@ class UserService {
     final data = Service.handleResponse(response);
     return data;
   }
+
+  static Future<void> updateUser(
+    String uid,
+    String username,
+    String photoUrl,
+  ) async {
+    await http.put(
+      Service.getUri(
+        "/users/update-user/$uid?username=$username&photoUrl=$photoUrl",
+      ),
+      headers: {"Content-Type": "application/json"},
+    );
+  }
+
+  static Future<void> deleteUser(String uid) async {
+    await http.delete(
+      Service.getUri("/users/delete-user/$uid"),
+      headers: {"Content-Type": "application/json"},
+    );
+  }
 }

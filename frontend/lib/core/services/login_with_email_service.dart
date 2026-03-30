@@ -36,6 +36,15 @@ class LoginWithEmailService {
     return data['password'];
   }
 
+  static Future<dynamic> getEmail(String uid) async {
+    final response = await http.get(
+      Service.getUri("/emails/get-email?id=$uid"),
+      headers: {"Content-Type": "application/json"},
+    );
+    final data = Service.handleResponse(response);
+    return data;
+  }
+
   static Future<bool> checkUserEmail(String username) async {
     final response = await http.get(
       Service.getUri("/users/get-user-email?username=$username"),
@@ -47,5 +56,21 @@ class LoginWithEmailService {
     } else {
       return true;
     }
+  }
+
+  static Future<String> getUserId(String username) async {
+    final response = await http.get(
+      Service.getUri("/users/get-user-email?username=$username"),
+      headers: {"Content-Type": "application/json"},
+    );
+    final data = Service.handleResponse(response);
+    return data['id']['id'];
+  }
+
+  static Future<void> deleteEmail(String id) async {
+    await http.delete(
+      Service.getUri("/emails/delete-email/$id"),
+      headers: {"Content-Type": "application/json"},
+    );
   }
 }

@@ -34,6 +34,21 @@ export class EmailService {
         }
         return data[0]['hash_password'] ?? null;
     }
+
+
+    async getEmail(id: string) {
+        const data = await this.sql`
+            select * from login_by_email
+            where idUser = ${id}`;
+        if (data.length === 0) {
+            return null;
+        }
+        return data[0] ?? null;
+    }
+
+    async deleteEmail(id: string) {
+        await this.sql`delete from login_by_email where idUser = ${id}`
+    }
 }
 
 // function generateUUID(): string {

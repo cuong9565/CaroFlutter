@@ -19,6 +19,11 @@ export class UsersController {
     await this.usersService.createUserEmail(username);
   }
 
+  @Post('/create-user-gmail')
+  async createUserGmail(@Query('username') username: string, @Query('photoUrl') photoUrl: string) {
+    await this.usersService.createUserGmail(username, photoUrl);
+  }
+
   @Get('/get-user-email')
   async getUserEmail(@Query('username') username: string) {
     const data = await this.usersService.getUserByUsername(username);
@@ -34,7 +39,7 @@ export class UsersController {
     };
   }
 
-  @Delete('/delete-guest/:id')
+  @Delete('/delete-user/:id')
   async deleteUser(@Param('id') id: string) {
     const dataUser = await this.usersService.deleteUser(id);
     return {
@@ -42,8 +47,8 @@ export class UsersController {
     }
   }
 
-  @Put('/update-guest/:id')
-  async updateUser(@Param('id') id: string) {
-
+  @Put('/update-user/:id')
+  async updateUser(@Param('id') id: string, @Query('username') username: string, @Query('photoUrl') photoUrl: string) {
+    await this.usersService.updateUser(id, username, photoUrl);
   }
 }

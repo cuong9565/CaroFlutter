@@ -20,4 +20,16 @@ class UserProvider {
       return {'user': data['user']};
     }
   }
+
+  static Future<void> updateUser(
+    String uid,
+    String username,
+    String photoUrl,
+  ) async {
+    await UserService.updateUser(uid, username, photoUrl);
+  }
+
+  static Future<void> deleteUser(String uid) async {
+    await UserService.deleteUser(uid);
+  }
 }
