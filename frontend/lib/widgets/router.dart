@@ -6,6 +6,8 @@ import 'package:frontend/screens/game_online.dart';
 import 'package:frontend/screens/game.dart';
 import 'package:frontend/screens/history.dart';
 import 'package:frontend/screens/home.dart';
+import 'package:frontend/screens/login.dart';
+import 'package:frontend/screens/signin.dart';
 import 'package:frontend/screens/play_with_friend.dart';
 import 'package:frontend/widgets/layout/my_error.dart';
 import 'package:frontend/widgets/main_layout.dart';
@@ -37,6 +39,14 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/game-online',
       builder: (_, _) => const SafeArea(child: Scaffold(body: GameOnline())),
+    ),
+    GoRoute(
+      path: '/login',
+      builder: (_, _) => const SafeArea(child: Scaffold(body: Login())),
+    ),
+    GoRoute(
+      path: '/signin',
+      builder: (_, _) => const SafeArea(child: Scaffold(body: Signin())),
     ),
     GoRoute(
       path: '/play/:idRoom',
