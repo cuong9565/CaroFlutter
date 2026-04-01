@@ -48,7 +48,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
 
   @override
   void dispose() {
-    SocketService.socket.emit('out-room');
+    SocketService.emit('out-room');
     super.dispose();
   }
 
@@ -74,7 +74,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
             ButtonNormal(
               text: "Thoát",
               onPressed: () => {
-                SocketService.socket.emit('out-room'),
+                SocketService.emit('out-room'),
                 context.go("/"),
               },
             ),
@@ -324,7 +324,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                                 ),
                                 TextButton(
                                   onPressed: () => {
-                                    SocketService.socket.emit('on-out-room', {
+                                    SocketService.emit('on-out-room', {
                                       'roomId': idRoom,
                                       'idUserLose': data?['user']['id'],
                                     }),
@@ -363,6 +363,13 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
   }
 
   void _connectSocket(dynamic data) {
+    final userId = data?['user']?['id'];
+    if (userId == null) {
+      return;
+    }
+
+    SocketService.init(userId);
+
     joinRoomListener = (data) {
       if (!mounted) return;
       setState(() {
@@ -418,12 +425,12 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
       if (!mounted) return;
       context.go('/');
     };
-    final id = ref.read(userNotifier).value;
-    SocketService.socket.on('join-room', joinRoomListener);
-    SocketService.socket.on('your-turn-move', onYourMove);
-    SocketService.socket.on('opponent-out-room', onOpponentOutRoom);
-    SocketService.socket.emit('request-play-game-online', {
-      'idUser': id!['user']['id'],
+
+    SocketService.on('join-room', joinRoomListener);
+    SocketService.on('your-turn-move', onYourMove);
+    SocketService.on('opponent-out-room', onOpponentOutRoom);
+    SocketService.emit('request-play-game-online', {
+      'idUser': userId,
     });
   }
 
@@ -446,7 +453,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
         }
         isYourTurn = false;
         hoverCell = null;
-        SocketService.socket.emit('on-move', {
+        SocketService.emit('on-move', {
           'roomId': idRoom,
           'x': row,
           'y': col,
@@ -455,3 +462,4 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
     }
   }
 }
+

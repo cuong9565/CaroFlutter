@@ -9,6 +9,8 @@ import { MatchesPlayerModule } from './matches_player/matches_player.module';
 import { GameModule } from './game/game.module';
 import { MatchModule } from './match/match.module';
 import { GmailModule } from './login/gmail/gmail.module';
+import { EmailModule } from './login/email/email.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { GmailModule } from './login/gmail/gmail.module';
     MatchesPlayerModule,
     MatchModule,
     GmailModule,
+    EmailModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

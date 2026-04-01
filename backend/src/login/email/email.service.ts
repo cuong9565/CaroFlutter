@@ -12,7 +12,7 @@ export class EmailService {
 
     async createEmail(username: string, email: string, hash_password: string) {
         // const uuid = generateUUID();
-        this.usersService.createUserEmail(username);
+        await this.usersService.createUserEmail(username);
         const user = await this.usersService.getUserByUsername(username);
         const user_id = user['id'];
         await this.sql`

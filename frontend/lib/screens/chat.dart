@@ -19,8 +19,12 @@ class _ChatState extends State<Chat> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      // Nếu chưa có userId, reinitialize để đọc lại từ storage
+      if (chatProvider.currentUserId.isEmpty) {
+        await chatProvider.reinitialize();
+      }
       chatProvider.loadConversations();
     });
   }
@@ -169,6 +173,7 @@ class _ChatState extends State<Chat> {
     final otherUser = conversation.getOtherUser(chatProvider.currentUsername);
     final hasUnread = conversation.unreadCount > 0;
     final isSelected = _selectedConversation?.id == conversation.id;
+    final lastMessageContent = conversation.lastMessage?['content'] ?? '';
 
     return InkWell(
       onTap: () {
@@ -216,11 +221,7 @@ class _ChatState extends State<Chat> {
                     children: [
                       Expanded(
                         child: Text(
-                          () {
-                            final name = conversation.getOtherUser(chatProvider.currentUsername);
-                            print('Conversation ${conversation.id}: currentUsername=${chatProvider.currentUsername}, otherName=$name');
-                            return name;
-                          }(),
+                          otherUser,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
@@ -245,7 +246,7 @@ class _ChatState extends State<Chat> {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation.lastMessage?['content'] ?? '',
+                          lastMessageContent,
                           style: TextStyle(
                             fontSize: 14,
                             color: hasUnread ? const Color.fromARGB(221, 59, 13, 13) : Colors.grey[600],
