@@ -61,8 +61,12 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
 
   void _initOnceSocket(Map<String, dynamic>? valueUserGlobal) {
     idUser = valueUserGlobal!['user']['id'];
-    SocketService.socket.off('response-start-game');
-    SocketService.socket.on('response-start-game', (data) {
+    SocketService.init(idUser);
+    final socket = SocketService.socket;
+    if (socket == null) return;
+
+    socket.off('response-start-game');
+    socket.on('response-start-game', (data) {
       if (!mounted) return;
       // data: { state: String = "" || "QR" || ERROR || PLAY || WAITING "Xu ly cho doi thu" || ENDGAME }
       setState(() {
@@ -114,8 +118,8 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
       });
     });
 
-    SocketService.socket.off('response-on-move');
-    SocketService.socket.on('response-on-move', (data) {
+    socket.off('response-on-move');
+    socket.on('response-on-move', (data) {
       if (!mounted) return;
       setState(() {
         if (data['state'] == "ENDGAME") {
@@ -163,13 +167,13 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
       });
     });
 
-    SocketService.socket.off('response-out-room');
-    SocketService.socket.on('response-out-room', (data) {
+    socket.off('response-out-room');
+    socket.on('response-out-room', (data) {
       context.go('/');
     });
 
-    SocketService.socket.off('response-playagain');
-    SocketService.socket.on('response-playagain', (data) {
+    socket.off('response-playagain');
+    socket.on('response-playagain', (data) {
       setState(() {
         if (isOverLay) {
           Navigator.pop(context);
@@ -179,7 +183,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
       });
     });
 
-    SocketService.socket.emit('request-start-game', {
+    socket.emit('request-start-game', {
       'idRoom': idRoom,
       'idUser': idUser,
     });
@@ -210,7 +214,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
               MyQR(url: GoRouterState.of(context).uri.toString()),
               ElevatedButton(
                 onPressed: () {
-                  SocketService.socket.emit('request-out-room', {
+                  SocketService.socket?.emit('request-out-room', {
                     'idRoom': idRoom,
                     'idUser': idUser,
                   });
@@ -436,7 +440,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                                 ),
                                 TextButton(
                                   onPressed: () => {
-                                    SocketService.socket.emit(
+                                    SocketService.emit(
                                       'request-out-room',
                                       {'idRoom': idRoom, 'idUser': idUser},
                                     ),
@@ -493,7 +497,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
         }
         yourTurn = false;
         hoverCell = null;
-        SocketService.socket.emit('request-on-move', {
+        SocketService.emit('request-on-move', {
           'idRoom': idRoom,
           'idUser': idUser,
           'x': row,
@@ -540,7 +544,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                         ),
                         ElevatedButton(
                           onPressed: () {
-                            SocketService.socket.emit('request-out-room', {
+                            SocketService.emit('request-out-room', {
                               'idRoom': idRoom,
                               'idUser': idUser,
                             });
@@ -581,7 +585,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                       ButtonNormal(
                         text: "Chơi lại",
                         onPressed: () {
-                          SocketService.socket.emit('request-playagain', {
+                          SocketService.emit('request-playagain', {
                             'idRoom': idRoom,
                             'idUser': idUser,
                           });
@@ -605,11 +609,11 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                         onPressed: () {
                           Navigator.pop(context);
                           context.go('/');
-                          SocketService.socket.emit('request-out-room', {
+                          SocketService.emit('request-out-room', {
                             'idRoom': idRoom,
                             'idUser': idUser,
                           });
-                        },
+                        }, 
                       ),
                     ],
                   ),
@@ -619,3 +623,4 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
     });
   }
 }
+

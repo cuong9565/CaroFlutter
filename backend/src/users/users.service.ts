@@ -6,7 +6,7 @@ export class UsersService {
   constructor(
     @Inject('POSTGRES_POOL')
     private readonly sql: Database,
-  ) {}
+  ) { }
 
   async createGuest() {
     const RandomId = Math.floor(1000 + Math.random() * 9000);
@@ -19,6 +19,24 @@ export class UsersService {
     return data[0] ?? null;
   }
 
+  async createUserEmail(username: string) {
+    await this.sql`
+      insert into users(username, type_login)
+      values(${username}, 1)`;
+  }
+
+  async createUserGmail(username: string, photoUrl: string) {
+    await this.sql`
+      insert into users(username, avartar_url, type_login)
+      values(${username}, ${photoUrl}, 2)`;
+  }
+
+  async getUserByUsername(username: string) {
+    const data = await this.sql`
+      select * from users where username = ${username}`;
+    return data[0] ?? null;
+  }
+
   async getUser(id: string) {
     const data = await this.sql`
       select * 
@@ -26,6 +44,19 @@ export class UsersService {
       where id = ${id}
       limit 1
     `;
+    return data[0] ?? null;
+  }
+
+  async updateUser(id: string, username: string, photoUrl: string) {
+    await this.sql`
+      update users 
+      set username = ${username}, avartar_url = ${photoUrl} 
+      where id = ${id}
+    `;
+  }
+
+  async deleteUser(id: string) {
+    const data = await this.sql`delete from users where id = ${id}`
     return data[0] ?? null;
   }
 }

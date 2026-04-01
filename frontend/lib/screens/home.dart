@@ -99,7 +99,8 @@ class _GameMode extends ConsumerState<GameMode> {
       // Lắng nghe khi userNotifier thay đổi
       ref.listenManual(userNotifier, (previous, next) {
         if (next.hasValue) {
-          SocketService.socket.emit('request-create-room', {
+          _ensureSocketReady(next.value!);
+          SocketService.emit('request-create-room', {
             'idUser': next.value!['user']['id'],
           });
         }
@@ -108,7 +109,8 @@ class _GameMode extends ConsumerState<GameMode> {
       // Khi widget được khởi tạo
       final current = ref.read(userNotifier);
       if (current.hasValue) {
-        SocketService.socket.emit('request-create-room', {
+        _ensureSocketReady(current.value!);
+        SocketService.emit('request-create-room', {
           'idUser': current.value!['user']['id'],
         });
       }
@@ -155,20 +157,27 @@ class _GameMode extends ConsumerState<GameMode> {
     // Lắng nghe khi userNotifier thay đổi
     ref.listenManual(userNotifier, (previous, next) {
       if (next.hasValue) {
-        _initOnceSocket();
+        _initOnceSocket(next.value!);
       }
     });
 
     // Khi widget được khởi tạo
     final current = ref.read(userNotifier);
     if (current.hasValue) {
-      _initOnceSocket();
+      _initOnceSocket(current.value!);
     }
   }
 
-  void _initOnceSocket() {
-    SocketService.socket.off('response-create-room');
-    SocketService.socket.once('response-create-room', (data) {
+  void _ensureSocketReady(Map<String, dynamic> userData) {
+    if (!SocketService.isInitialized) {
+      SocketService.init(userData['user']['id']);
+    }
+  }
+
+  void _initOnceSocket(Map<String, dynamic> userData) {
+    _ensureSocketReady(userData);
+    SocketService.off('response-create-room');
+    SocketService.once('response-create-room', (data) {
       if (!mounted) return;
       final String idRoom = data['idRoom'];
       context.go('/play/$idRoom');

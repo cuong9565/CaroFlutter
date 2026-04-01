@@ -51,4 +51,22 @@ class Conversation {
       orElse: () => 'Unknown',
     );
   }
+
+  Conversation copyWith({
+    String? id,
+    List<String>? participants,
+    Map<String, dynamic>? lastMessage,
+    List<Map<String, dynamic>>? messages,
+    int? unreadCount,
+    DateTime? updatedAt,
+  }) {
+    return Conversation(
+      id: id ?? this.id,
+      participants: participants ?? this.participants,
+      lastMessage: lastMessage ?? this.lastMessage,
+      messages: messages ?? this.messages,
+      unreadCount: unreadCount ?? this.unreadCount,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }

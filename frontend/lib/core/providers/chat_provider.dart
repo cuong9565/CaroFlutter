@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user_model.dart';
 import '../services/socket_service.dart';
 import '../models/conversation_model.dart';
@@ -9,29 +10,85 @@ import '../services/service.dart';
 
 class ChatProvider with ChangeNotifier {
  
-  final String _apiUrl = Service.apiUrl ;
+  final String _apiUrl = Service.apiUrl;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   List<Conversation> _conversations = [];
   final Map<String, List<Message>> _conversationMessages = {};
   final Map<String, bool> _typingStatus = {};
   bool _isConnected = false;
-  final String _currentUserId = '1a7f2c11-937d-427f-8882-3570a6f706b8';
+  String _currentUserId = '';
   String _currentUsername = '';
+  bool _isInitialized = false;
 
   List<Conversation> get conversations => _conversations;
   bool get isConnected => _isConnected;
   String get currentUserId => _currentUserId;
   String get currentUsername => _currentUsername;
+  bool get isInitialized => _isInitialized;
 
   ChatProvider() {
-    _loadCurrentUser().then((_) {
-      SocketService.init(_currentUserId);
-      _setupSocketListeners();
-    });
+    _initializeUser();
+  }
+
+  Future<void> _initializeUser() async {
+    try {
+      // Đọc userId từ FlutterSecureStorage
+      final uid = await _storage.read(key: 'uid');
+      print('ChatProvider: Read uid from storage: $uid');
+      if (uid != null && uid.isNotEmpty) {
+        _currentUserId = uid;
+        await _loadCurrentUser();
+        SocketService.init(_currentUserId);
+        _setupSocketListeners();
+        _isInitialized = true;
+        print('ChatProvider: Initialized with userId: $_currentUserId');
+        notifyListeners();
+      } else {
+        print('ChatProvider: No user ID found in storage');
+        _isInitialized = true; // Đánh dấu đã init xong dù không có userId
+        notifyListeners();
+      }
+    } catch (e) {
+      print('ChatProvider: Error initializing user: $e');
+      _isInitialized = true;
+      notifyListeners();
+    }
+  }
+
+  /// Gọi method này khi user đăng nhập mới để reinitialize với userId mới
+  Future<void> reinitialize() async {
+    // Disconnect socket cũ nếu có
+    if (_isInitialized) {
+      SocketService.disconnect();
+    }
+    
+    // Reset state
+    _conversations = [];
+    _conversationMessages.clear();
+    _typingStatus.clear();
+    _isConnected = false;
+    _currentUserId = '';
+    _currentUsername = '';
+    _isInitialized = false;
+    
+    // Khởi tạo lại với userId mới từ storage
+    await _initializeUser();
   }
 
   void _setupSocketListeners() {
+    // onNewMessage và onConversationHistory đã tự động clear listener cũ
     SocketService.onNewMessage(_handleNewMessage);
     SocketService.onConversationHistory(_handleConversationHistory);
+  }
+
+  /// Chờ cho đến khi userId được khởi tạo (tối đa 5 giây)
+  Future<void> _waitForInitialization() async {
+    int attempts = 0;
+    const maxAttempts = 50; // 50 * 100ms = 5 seconds
+    while (!_isInitialized && attempts < maxAttempts) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      attempts++;
+    }
   }
 
   void disconnect() {
@@ -68,6 +125,17 @@ class ChatProvider with ChangeNotifier {
 
   // Load conversations from server
   Future<void> loadConversations() async {
+    // Đảm bảo userId đã được khởi tạo
+    if (_currentUserId.isEmpty) {
+      print('ChatProvider: Cannot load conversations - userId is empty. Waiting for initialization...');
+      // Chờ khởi tạo nếu chưa có userId
+      await _waitForInitialization();
+      if (_currentUserId.isEmpty) {
+        print('ChatProvider: Still no userId after waiting');
+        return;
+      }
+    }
+    
     try {
       final response = await http.get(
         Uri.parse('$_apiUrl/chat/conversations?userId=$_currentUserId'),
@@ -138,7 +206,18 @@ class ChatProvider with ChangeNotifier {
     // Update conversation's last message
     final convIndex = _conversations.indexWhere((c) => c.id == conversationId);
     if (convIndex != -1) {
-     
+      final updatedConv = _conversations[convIndex].copyWith(
+        lastMessage: {
+          'content': content,
+          'sender': _currentUsername,
+          'timestamp': message.timestamp.toIso8601String(),
+        },
+        updatedAt: message.timestamp,
+      );
+      _conversations[convIndex] = updatedConv;
+      // Di chuyển conversation lên đầu danh sách
+      _conversations.removeAt(convIndex);
+      _conversations.insert(0, updatedConv);
     }
     
     notifyListeners();
@@ -164,17 +243,45 @@ class ChatProvider with ChangeNotifier {
   }
 
   void _handleNewMessage(Message message) {
-    // Add message to conversation
+    // Không thêm message của chính mình (đã được thêm local khi gửi)
+    if (message.senderUsername == _currentUsername) {
+      // Cập nhật message local với ID từ server nếu cần
+      final messages = _conversationMessages[message.conversationId];
+      if (messages != null) {
+        // Tìm message pending có cùng content và timestamp gần đúng
+        final pendingIndex = messages.indexWhere((m) => 
+          m.senderUsername == _currentUsername && 
+          m.content == message.content &&
+          !m.isSent
+        );
+        if (pendingIndex != -1) {
+          // Cập nhật với message từ server (có ID thực)
+          messages[pendingIndex] = message;
+          notifyListeners();
+        }
+      }
+      return;
+    }
+    
+    // Add message to conversation (chỉ với message từ người khác)
     if (!_conversationMessages.containsKey(message.conversationId)) {
       _conversationMessages[message.conversationId] = [];
     }
     _conversationMessages[message.conversationId]!.add(message);
 
+    // Cập nhật lastMessage và di chuyển conversation lên đầu
     final convIndex = _conversations.indexWhere((c) => c.id == message.conversationId);
     if (convIndex != -1) {
-      final conv = _conversations[convIndex];
+      final updatedConv = _conversations[convIndex].copyWith(
+        lastMessage: {
+          'content': message.content,
+          'sender': message.senderUsername,
+          'timestamp': message.timestamp.toIso8601String(),
+        },
+        updatedAt: message.timestamp,
+      );
       _conversations.removeAt(convIndex);
-      _conversations.insert(0, conv);
+      _conversations.insert(0, updatedConv);
     }
     
     notifyListeners();
