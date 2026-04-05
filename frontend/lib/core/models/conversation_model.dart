@@ -16,22 +16,53 @@ class Conversation {
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
+    final rawLastMessage = json['lastMessage'];
+    final parsedLastMessage = rawLastMessage is Map
+        ? Map<String, dynamic>.from(rawLastMessage)
+        : null;
+
     return Conversation(
       id: json['id'] ?? '',
       participants: (json['participants'] as List<dynamic>?)
               ?.map((p) => p as String)
               .toList() ??
           [],
-      lastMessage: json['lastMessage'] as Map<String, dynamic>?,
+      lastMessage: parsedLastMessage,
       messages: (json['messages'] as List<dynamic>?)
               ?.map((m) => m as Map<String, dynamic>)
               .toList() ??
           [],
       unreadCount: json['unreadCount'] ?? 0,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : DateTime.now(),
+      updatedAt: _resolveUpdatedAt(json, parsedLastMessage),
     );
+  }
+
+  static DateTime _resolveUpdatedAt(
+    Map<String, dynamic> json,
+    Map<String, dynamic>? lastMessage,
+  ) {
+    final rawUpdatedAt =
+        json['updatedAt'] ?? json['updateAt'] ?? lastMessage?['timestamp'];
+    return _parseDateTime(rawUpdatedAt);
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is DateTime) {
+      return value.toLocal();
+    }
+
+    if (value is String && value.isNotEmpty) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) {
+        return parsed.toLocal();
+      }
+    }
+
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value).toLocal();
+    }
+
+    return DateTime.now().toLocal();
   }
 
   Map<String, dynamic> toJson() {

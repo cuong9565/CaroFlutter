@@ -173,6 +173,44 @@ export type RequestOnMove = {
   y: number;
 };
 
+export type BotRoomsType = {
+  [idRoom: string]: {
+    user: UserRequestType;
+    board: number[][];
+    userTurn: 0 | 1; // 0: user, 1: bot
+    userX: 0 | 1; // 0: user is X, 1: user is O
+    stateGame: number; // -1: playing, 0: user win, 1: user lose, 2: draw
+  };
+};
+
+export type RequestPlayWithBotType = {
+  idUser: string;
+  socketUser: Socket;
+};
+
+export type RequestOnMoveWithBot = {
+  idRoom: string;
+  idUser: string;
+  x: number;
+  y: number;
+};
+
+export type ResponseStartGameWithBotType = {
+  state: 'PLAY' | 'ERROR';
+  idRoom?: string;
+  yourTurn?: boolean;
+  yourX?: boolean;
+  board?: number[][];
+};
+
+export type ResponseOnMoveWithBotType = {
+  state: 'OK' | 'ENDGAME' | 'ERROR';
+  x?: number;
+  y?: number;
+  result?: number; // 0 => user win, 1 => user lose, 2 => draw
+  lastTurn?: Cell;
+};
+
 export type ResponseOnMovePosition = {
   state: string;
   socketUser?: Socket;

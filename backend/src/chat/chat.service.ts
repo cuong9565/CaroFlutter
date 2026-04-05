@@ -54,7 +54,7 @@ export class ChatService {
       from messages m
       join users u on m.sender_id = u.id
       where m.conversation_id = ${convId}
-      order by m.timestamp desc
+      o~rder by m.timestamp desc
       limit ${limit}
     `;
     return data.map(row => ({
