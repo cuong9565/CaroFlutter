@@ -124,7 +124,9 @@ class _GameMode extends ConsumerState<GameMode> {
         },
       );
     },
-    (BuildContext context) {},
+    (BuildContext context) {
+      context.go('/game-machine');
+    },
     (BuildContext context) {
       context.go('/game-online');
     },

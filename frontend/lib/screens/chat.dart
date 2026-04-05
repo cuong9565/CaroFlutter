@@ -341,16 +341,22 @@ class _ChatState extends State<Chat> {
   }
 
   String _formatTime(DateTime time) {
+    final localTime = time.isUtc ? time.toLocal() : time;
     final now = DateTime.now();
-    final difference = now.difference(time);
+    final difference = now.difference(localTime);
+
+    if (difference.isNegative) {
+      return DateFormat('HH:mm').format(localTime);
+    }
+
     if (difference.inDays == 0) {
-      return DateFormat('HH:mm').format(time);
+      return DateFormat('HH:mm').format(localTime);
     } else if (difference.inDays == 1) {
       return 'Hôm qua';
     } else if (difference.inDays < 7) {
-      return DateFormat('EEE').format(time);
+      return DateFormat('EEE').format(localTime);
     } else {
-      return DateFormat('dd/MM').format(time);
+      return DateFormat('dd/MM').format(localTime);
     }
   }
 }

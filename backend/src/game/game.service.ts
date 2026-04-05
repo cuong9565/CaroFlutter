@@ -1,17 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import {
+  BotRoomsType,
   Cell,
   MatchesType,
   MovePosition,
   QueueGameOnlineType,
   RequestCreateRoomType,
   RequestOnMove,
+  RequestOnMoveWithBot,
   RequestParamStartGameType,
+  RequestPlayWithBotType,
   RequestStartGameType,
   ResponseMovePosition,
+  ResponseOnMoveWithBotType,
   ResponseOnMovePosition,
   ResponseOutRoom,
+  ResponseStartGameWithBotType,
   ResponseStartGameType,
   RoomsOnlineGameType,
   RoomsType,
@@ -26,6 +31,7 @@ export class GameService {
   private QueueGameOnline: QueueGameOnlineType = [];
   private RoomsOnlineGame: RoomsOnlineGameType = {};
   private Rooms: RoomsType = {};
+  private BotRooms: BotRoomsType = {};
   constructor(
     private readonly matchesPlayerService: MatchesPlayerService,
     private readonly matchService: MatchService,
@@ -50,6 +56,12 @@ export class GameService {
     this.QueueGameOnline = this.QueueGameOnline.filter(
       (item) => item.socket !== socket,
     );
+
+    for (const idRoom of Object.keys(this.BotRooms)) {
+      if (this.BotRooms[idRoom].user.socket === socket) {
+        delete this.BotRooms[idRoom];
+      }
+    }
   }
 
   async StartGameOnline(matches: MatchesType) {
@@ -655,9 +667,303 @@ export class GameService {
     };
   }
 
+  StartGameWithBot(
+    data: RequestPlayWithBotType,
+  ): ResponseStartGameWithBotType {
+    const idRoom =
+      'bot-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+
+    this.BotRooms[idRoom] = {
+      user: {
+        idUser: data.idUser,
+        socket: data.socketUser,
+      },
+      board: Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => -1)),
+      userTurn: 0,
+      userX: 0,
+      stateGame: -1,
+    };
+
+    return {
+      state: 'PLAY',
+      idRoom,
+      yourTurn: true,
+      yourX: true,
+      board: this.BotRooms[idRoom].board,
+    };
+  }
+
+  RequestOnMoveWithBot(data: RequestOnMoveWithBot): ResponseOnMoveWithBotType {
+    const room = this.BotRooms[data.idRoom];
+    if (!room || room.user.idUser !== data.idUser || room.stateGame !== -1) {
+      return {
+        state: 'ERROR',
+      };
+    }
+
+    if (room.userTurn !== 0) {
+      return {
+        state: 'ERROR',
+      };
+    }
+
+    if (
+      data.x < 0 ||
+      data.x >= room.board.length ||
+      data.y < 0 ||
+      data.y >= room.board.length ||
+      room.board[data.x][data.y] !== -1
+    ) {
+      return {
+        state: 'ERROR',
+      };
+    }
+
+    room.board[data.x][data.y] = 0;
+    if (this.IsWinningMove(room.board, data.x, data.y, 0)) {
+      room.stateGame = 0;
+      return {
+        state: 'ENDGAME',
+        result: 0,
+        lastTurn: {
+          x: data.x,
+          y: data.y,
+        },
+      };
+    }
+
+    if (this.IsBoardFull(room.board)) {
+      room.stateGame = 2;
+      return {
+        state: 'ENDGAME',
+        result: 2,
+      };
+    }
+
+    room.userTurn = 1;
+    const botMove = this.GetBestBotMove(room.board);
+    room.board[botMove.x][botMove.y] = 1;
+
+    if (this.IsWinningMove(room.board, botMove.x, botMove.y, 1)) {
+      room.stateGame = 1;
+      return {
+        state: 'ENDGAME',
+        result: 1,
+        lastTurn: {
+          x: botMove.x,
+          y: botMove.y,
+        },
+      };
+    }
+
+    if (this.IsBoardFull(room.board)) {
+      room.stateGame = 2;
+      return {
+        state: 'ENDGAME',
+        result: 2,
+        lastTurn: {
+          x: botMove.x,
+          y: botMove.y,
+        },
+      };
+    }
+
+    room.userTurn = 0;
+    return {
+      state: 'OK',
+      x: botMove.x,
+      y: botMove.y,
+    };
+  }
+
+  private GetBestBotMove(board: number[][]): Cell {
+    const candidates = this.GetCandidateMoves(board);
+    for (const move of candidates) {
+      if (this.IsWinningMove(board, move.x, move.y, 1)) {
+        return move;
+      }
+    }
+
+    for (const move of candidates) {
+      if (this.IsWinningMove(board, move.x, move.y, 0)) {
+        return move;
+      }
+    }
+
+    let bestScore = -1;
+    let bestMove = candidates[0];
+    for (const move of candidates) {
+      const attackScore = this.EvaluateMove(board, move.x, move.y, 1);
+      const defendScore = this.EvaluateMove(board, move.x, move.y, 0);
+      const score = attackScore * 2 + defendScore;
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = move;
+      }
+    }
+    return bestMove;
+  }
+
+  private GetCandidateMoves(board: number[][]): Cell[] {
+    const n = board.length;
+    const set = new Set<string>();
+    const result: Cell[] = [];
+
+    let hasStone = false;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (board[i][j] !== -1) {
+          hasStone = true;
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = i + dx;
+              const ny = j + dy;
+              if (
+                nx >= 0 &&
+                nx < n &&
+                ny >= 0 &&
+                ny < n &&
+                board[nx][ny] === -1
+              ) {
+                const key = nx + ':' + ny;
+                if (!set.has(key)) {
+                  set.add(key);
+                  result.push({ x: nx, y: ny });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (!hasStone) {
+      const center = Math.floor(n / 2);
+      return [{ x: center, y: center }];
+    }
+
+    return result.length > 0 ? result : [{ x: Math.floor(n / 2), y: Math.floor(n / 2) }];
+  }
+
+  private EvaluateMove(board: number[][], x: number, y: number, value: 0 | 1): number {
+    if (board[x][y] !== -1) return -1;
+
+    const directions = [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [1, -1],
+    ];
+    let score = 0;
+
+    for (const [dx, dy] of directions) {
+      const left = this.CountInDirection(board, x, y, dx, dy, value);
+      const right = this.CountInDirection(board, x, y, -dx, -dy, value);
+      const total = left + right + 1;
+
+      const open1x = x + (left + 1) * dx;
+      const open1y = y + (left + 1) * dy;
+      const open2x = x - (right + 1) * dx;
+      const open2y = y - (right + 1) * dy;
+      const openEnds =
+        (this.IsEmptyCell(board, open1x, open1y) ? 1 : 0) +
+        (this.IsEmptyCell(board, open2x, open2y) ? 1 : 0);
+
+      score += this.GetPatternScore(total, openEnds);
+    }
+
+    return score;
+  }
+
+  private GetPatternScore(total: number, openEnds: number): number {
+    if (total >= 5) return 1000000;
+    if (total === 4 && openEnds === 2) return 200000;
+    if (total === 4 && openEnds === 1) return 50000;
+    if (total === 3 && openEnds === 2) return 12000;
+    if (total === 3 && openEnds === 1) return 3000;
+    if (total === 2 && openEnds === 2) return 600;
+    if (total === 2 && openEnds === 1) return 120;
+    return 10;
+  }
+
+  private CountInDirection(
+    board: number[][],
+    x: number,
+    y: number,
+    dx: number,
+    dy: number,
+    value: 0 | 1,
+  ): number {
+    let count = 0;
+    let nx = x + dx;
+    let ny = y + dy;
+    while (
+      nx >= 0 &&
+      nx < board.length &&
+      ny >= 0 &&
+      ny < board.length &&
+      board[nx][ny] === value
+    ) {
+      count++;
+      nx += dx;
+      ny += dy;
+    }
+    return count;
+  }
+
+  private IsEmptyCell(board: number[][], x: number, y: number): boolean {
+    return x >= 0 && x < board.length && y >= 0 && y < board.length && board[x][y] === -1;
+  }
+
+  private IsWinningMove(
+    board: number[][],
+    x: number,
+    y: number,
+    value: 0 | 1,
+  ): boolean {
+    const directions = [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [1, -1],
+    ];
+
+    for (const [dx, dy] of directions) {
+      let line = 1;
+      line += this.CountInDirection(board, x, y, dx, dy, value);
+      line += this.CountInDirection(board, x, y, -dx, -dy, value);
+      if (line >= 5) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private IsBoardFull(board: number[][]): boolean {
+    for (let i = 0; i < board.length; i++) {
+      for (let j = 0; j < board.length; j++) {
+        if (board[i][j] === -1) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   RequestOutRoom(data: RequestStartGameType) {
     const idUser = data.idUser;
     const idRoom = data.idRoom;
+
+    if (
+      this.BotRooms[idRoom] &&
+      this.BotRooms[idRoom].user.idUser === idUser
+    ) {
+      delete this.BotRooms[idRoom];
+      return {
+        users: [],
+      };
+    }
 
     if (!this.Rooms[idRoom]) {
       return {

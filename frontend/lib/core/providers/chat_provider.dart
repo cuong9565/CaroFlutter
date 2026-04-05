@@ -144,12 +144,18 @@ class ChatProvider with ChangeNotifier {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final conversationsData = data['conversations'] as List;
         print('Loaded ${data['count']} conversations from server');
-        final newConversations = conversationsData.map((c) => Conversation.fromJson(c)).toList();
+        final newConversations = conversationsData
+            .map((c) => Conversation.fromJson(c as Map<String, dynamic>))
+            .toList();
+        newConversations.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         print('Parsed ${newConversations.length} conversations');
         // Populate messages cache
         for (final conv in newConversations) {
-          final messagesData = conv.messages ?? [];
-          _conversationMessages[conv.id] = messagesData.map((m) => Message.fromJson(m)).toList();
+          final sortedMessages = conv.messages
+              .map((m) => Message.fromJson(m))
+              .toList()
+            ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          _conversationMessages[conv.id] = sortedMessages;
         }
         // Check for duplicates
         final ids = newConversations.map((c) => c.id).toSet();
@@ -175,7 +181,11 @@ class ChatProvider with ChangeNotifier {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
-        _conversationMessages[conversationId] = data.map((m) => Message.fromJson(m)).toList();
+        final sortedMessages = data
+            .map((m) => Message.fromJson(m as Map<String, dynamic>))
+            .toList()
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        _conversationMessages[conversationId] = sortedMessages;
         notifyListeners();
       } else {
         print('Error loading messages: ${response.statusCode}');
@@ -268,6 +278,8 @@ class ChatProvider with ChangeNotifier {
       _conversationMessages[message.conversationId] = [];
     }
     _conversationMessages[message.conversationId]!.add(message);
+    _conversationMessages[message.conversationId]!
+        .sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     // Cập nhật lastMessage và di chuyển conversation lên đầu
     final convIndex = _conversations.indexWhere((c) => c.id == message.conversationId);
