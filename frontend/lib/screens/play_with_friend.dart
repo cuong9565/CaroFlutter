@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:frontend/core/models/line.dart';
 import 'package:frontend/core/notifiers/user_notifier.dart';
 import 'package:frontend/core/services/socket_service.dart';
 import 'package:frontend/widgets/buttons/button.dart';
@@ -29,10 +30,12 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
   // FOR GAME--------------------------------------------------------------------------------------
   late bool yourX;
   late bool yourTurn;
+  late bool isUser0X;
   int stateGame = -1; // -1: Chưa đấu xong, 0 => Thắng, 1 => Thua, 2 => Hòa
   bool isOverLay = false;
   late int yourRationWin, yourRationLoose, yourRationDraw;
   late int opponentRationWin, opponentRationLoose, opponentRationDraw;
+  late List<Line> lines;
   final int gridSize = 16;
   final double cellSize = 25;
 
@@ -76,6 +79,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           // stateGame:
           yourTurn = data['yourTurn'];
           yourX = data['yourX'];
+          isUser0X = data['isUser0X'];
           stateGame = data['stateGame'];
           isUserReady = data['isUserReady'];
           isYouReady = data['isYouReady'];
@@ -85,6 +89,15 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           opponentRationWin = data['opponentRation']['win'];
           opponentRationLoose = data['opponentRation']['loose'];
           opponentRationDraw = data['opponentRation']['draw'];
+          lines = (data['lines'] as List<dynamic>)
+              .map(
+                (item) => Line(
+                  typeLine: item['typeLine'],
+                  top: Point(x: item['top']['x'], y: item['top']['y']),
+                  bottom: Point(x: item['bottom']['x'], y: item['bottom']['y']),
+                ),
+              )
+              .toList();
 
           if (isOverLay) {
             isOverLay = false;
@@ -101,9 +114,17 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           for (int i = 0; i < boards.length; i++) {
             for (int j = 0; j < boards[i].length; j++) {
               if (boards[i][j] == 0) {
-                newVisitedX.add(Offset(i.toDouble(), j.toDouble()));
+                if (isUser0X) {
+                  newVisitedX.add(Offset(i.toDouble(), j.toDouble()));
+                } else {
+                  newVisitedO.add(Offset(i.toDouble(), j.toDouble()));
+                }
               } else if (boards[i][j] == 1) {
-                newVisitedO.add(Offset(i.toDouble(), j.toDouble()));
+                if (!isUser0X) {
+                  newVisitedX.add(Offset(i.toDouble(), j.toDouble()));
+                } else {
+                  newVisitedO.add(Offset(i.toDouble(), j.toDouble()));
+                }
               }
             }
           }
@@ -127,6 +148,17 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           opponentRationLoose = data['opponentRation']['loose'];
           opponentRationDraw = data['opponentRation']['draw'];
           stateGame = data['result'];
+          // Update lines win
+          lines = (data['lines'] as List<dynamic>)
+              .map(
+                (item) => Line(
+                  typeLine: item['typeLine'],
+                  top: Point(x: item['top']['x'], y: item['top']['y']),
+                  bottom: Point(x: item['bottom']['x'], y: item['bottom']['y']),
+                ),
+              )
+              .toList();
+
           if (stateGame != 0) {
             if (!yourX) {
               visitedX = {
@@ -403,6 +435,8 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                                           visitedO,
                                           hoverCell,
                                           yourX,
+                                          lines,
+                                          stateGame,
                                         ),
                                   ),
                                 ),

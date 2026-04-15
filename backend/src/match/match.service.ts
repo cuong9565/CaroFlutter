@@ -17,4 +17,12 @@ export class MatchService {
     `;
     return data[0] as MatchType;
   }
+
+  async updateStateMatch(id: string, state: string) {
+    await this.sql`
+      update match
+      set state_userrequest = ${state}
+      where id = ${id}
+    `;
+  }
 }

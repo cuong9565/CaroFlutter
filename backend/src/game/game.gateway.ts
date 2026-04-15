@@ -26,14 +26,16 @@ import type {
 export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private readonly gameService: GameService) {}
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   handleConnection(client: Socket) {
     console.log(client.id, 'Connected');
   }
 
   handleDisconnect(client: Socket) {
+    console.log(client.id, 'Disconnected');
     this.gameService.OutRoom(client);
+    // Xóa user
   }
 
   @SubscribeMessage('out-room')
@@ -77,17 +79,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
       resPonseData.client1!.socket.emit('your-turn-move', {
         status: resPonseData.status,
         result: resPonseData.client1?.result,
-        typeLine: resPonseData.typeLine,
-        top: resPonseData.top,
-        bottom: resPonseData.bottom,
         lastTurn: resPonseData.lastTurn,
       });
       resPonseData.client2!.socket.emit('your-turn-move', {
         status: resPonseData.status,
         result: resPonseData.client2?.result,
-        typeLine: resPonseData.typeLine,
-        top: resPonseData.top,
-        bottom: resPonseData.bottom,
         lastTurn: resPonseData.lastTurn,
       });
     }
@@ -144,23 +140,27 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         state: request.state,
         yourTurn: request.userTurn === 0 ? true : false,
         yourX: request.userX === 0 ? true : false,
+        isUser0X: request.userX === 0 ? true : false,
         board: request.match?.boards,
         stateGame: request.match?.stateGame,
         isUserReady: request.match?.isU1Ready,
         isYouReady: request.match?.isU0Ready,
         yourRation: request.ratio?.[0],
         opponentRation: request.ratio?.[1],
+        lines: [],
       });
       request.user![1]!.socketUser!.emit('response-start-game', {
         state: request.state,
         yourTurn: request.userTurn === 1 ? true : false,
         yourX: request.userX === 1 ? true : false,
+        isUser0X: request.userX === 0 ? true : false,
         board: request.match?.boards,
         stateGame: request.match?.stateGame,
         isUserReady: request.match?.isU0Ready,
         isYouReady: request.match?.isU1Ready,
         yourRation: request.ratio?.[1],
         opponentRation: request.ratio?.[0],
+        lines: [],
       });
     } else if (request.state === 'LOAD') {
       if (request.user?.[0].idUser === data.idUser) {
@@ -168,6 +168,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           state: request.state,
           yourTurn: request.userTurn === 0 ? true : false,
           yourX: request.userX === 0 ? true : false,
+          isUser0X: request.userX === 0 ? true : false,
           board: request.match?.boards,
           stateGame:
             request.match?.stateGame === -1
@@ -181,12 +182,14 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           isYouReady: request.match?.isU0Ready,
           yourRation: request.ratio?.[0],
           opponentRation: request.ratio?.[1],
+          lines: request.lines,
         });
       } else if (request.user![1]!.idUser! === data.idUser) {
         client.emit('response-start-game', {
           state: request.state,
           yourTurn: request.userTurn === 1 ? true : false,
           yourX: request.userX === 1 ? true : false,
+          isUser0X: request.userX === 0 ? true : false,
           board: request.match?.boards,
           stateGame:
             request.match?.stateGame === -1
@@ -200,6 +203,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           isYouReady: request.match?.isU1Ready,
           yourRation: request.ratio?.[1],
           opponentRation: request.ratio?.[0],
+          lines: request.lines,
         });
       }
     }
@@ -217,9 +221,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
       resPonseData.client1!.socket.emit('response-on-move', {
         state: resPonseData.state,
         result: resPonseData.client1?.result,
-        typeLine: resPonseData.typeLine,
-        top: resPonseData.top,
-        bottom: resPonseData.bottom,
+        lines: resPonseData.lines,
         lastTurn: resPonseData.lastTurn,
         yourRation: resPonseData.ratio?.[0],
         opponentRation: resPonseData.ratio?.[1],
@@ -227,9 +229,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
       resPonseData.client2!.socket.emit('response-on-move', {
         state: resPonseData.state,
         result: resPonseData.client2?.result,
-        typeLine: resPonseData.typeLine,
-        top: resPonseData.top,
-        bottom: resPonseData.bottom,
+        lines: resPonseData.lines,
         lastTurn: resPonseData.lastTurn,
         yourRation: resPonseData.ratio?.[1],
         opponentRation: resPonseData.ratio?.[0],
@@ -253,23 +253,27 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         state: request.state,
         yourTurn: request.userTurn === 0 ? true : false,
         yourX: request.userX === 0 ? true : false,
+        isUser0X: request.userX === 0 ? true : false,
         board: request.match?.boards,
         stateGame: request.match?.stateGame,
         isUserReady: request.match?.isU1Ready,
         isYouReady: request.match?.isU0Ready,
         yourRation: request.ratio?.[0],
         opponentRation: request.ratio?.[1],
+        lines: [],
       });
       request.user![1]!.socketUser!.emit('response-start-game', {
         state: request.state,
         yourTurn: request.userTurn === 1 ? true : false,
         yourX: request.userX === 1 ? true : false,
+        isUser0X: request.userX === 0 ? true : false,
         board: request.match?.boards,
         stateGame: request.match?.stateGame,
         isUserReady: request.match?.isU0Ready,
         isYouReady: request.match?.isU1Ready,
         yourRation: request.ratio?.[1],
         opponentRation: request.ratio?.[0],
+        lines: [],
       });
     } else if (request.state === 'ALERT') {
       request.socket?.emit('response-playagain', {

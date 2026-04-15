@@ -121,27 +121,6 @@ export class GameService {
         bottom: bottom,
       });
     }
-    if (line1 >= 5)
-      return {
-        status: true,
-        client1: {
-          idUser: oldData.firstUser.idUser,
-          socket: oldData.firstUser.socket,
-          result: oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: oldData.secondUser.idUser,
-          socket: oldData.secondUser.socket,
-          result: !oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        typeLine: 1,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: move.x,
-          y: move.y,
-        },
-      };
 
     // // Đường ngang
     let line2 = 1;
@@ -166,27 +145,6 @@ export class GameService {
         bottom: bottom,
       });
     }
-    if (line2 >= 5)
-      return {
-        status: true,
-        client1: {
-          idUser: oldData.firstUser.idUser,
-          socket: oldData.firstUser.socket,
-          result: oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: oldData.secondUser.idUser,
-          socket: oldData.secondUser.socket,
-          result: !oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        typeLine: 2,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: move.x,
-          y: move.y,
-        },
-      };
 
     // // Đường chéo huyền
     let line3 = 1;
@@ -211,27 +169,6 @@ export class GameService {
         bottom: bottom,
       });
     }
-    if (line3 >= 5)
-      return {
-        status: true,
-        client1: {
-          idUser: oldData.firstUser.idUser,
-          socket: oldData.firstUser.socket,
-          result: oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: oldData.secondUser.idUser,
-          socket: oldData.secondUser.socket,
-          result: !oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        typeLine: 3,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: move.x,
-          y: move.y,
-        },
-      };
 
     // // Đường chéo sắc
     let line4 = 1;
@@ -257,7 +194,8 @@ export class GameService {
       });
     }
 
-    if (line4 >= 5)
+    // Send win
+    if (lines.length > 0) {
       return {
         status: true,
         client1: {
@@ -270,14 +208,13 @@ export class GameService {
           socket: oldData.secondUser.socket,
           result: !oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
         },
-        typeLine: 4,
-        top: top,
-        bottom: bottom,
+        lines: lines,
         lastTurn: {
           x: move.x,
           y: move.y,
         },
       };
+    }
 
     // Đổi lượt chơi
     this.RoomsOnlineGame[move.roomId].isFirstUserMove =
@@ -389,6 +326,8 @@ export class GameService {
           ratio: this.Rooms[idRoom].ratio,
           userTurn: this.Rooms[idRoom].match.at(-1)?.userTurn,
           userX: this.Rooms[idRoom].match.at(-1)?.userX,
+          numMove: this.Rooms[idRoom].match.at(-1)?.numMove,
+          lines: this.Rooms[idRoom].match.at(-1)?.lines,
         };
       } else if (idUser === room.user[1].idUser) {
         this.Rooms[idRoom].user[1]!.socketUser = data.socketUser;
@@ -399,6 +338,8 @@ export class GameService {
           ratio: this.Rooms[idRoom].ratio,
           userTurn: this.Rooms[idRoom].match.at(-1)?.userTurn,
           userX: this.Rooms[idRoom].match.at(-1)?.userX,
+          numMove: this.Rooms[idRoom].match.at(-1)?.numMove,
+          lines: this.Rooms[idRoom].match.at(-1)?.lines,
         };
       }
       return {
@@ -412,6 +353,17 @@ export class GameService {
     const idUser = data.idUser;
     const x = data.x;
     const y = data.y;
+    const lines: {
+      typeLine: number;
+      top: {
+        x: number;
+        y: number;
+      };
+      bottom: {
+        x: number;
+        y: number;
+      };
+    }[] = [];
 
     // Check valid board
     if (!this.Rooms[idRoom]) {
@@ -437,6 +389,8 @@ export class GameService {
 
     // Update board
     this.Rooms[idRoom].match.at(-1)!.boards[x][y] = turn!;
+    this.Rooms[idRoom].match.at(-1)!.numMove =
+      this.Rooms[idRoom].match.at(-1)!.numMove + 1;
 
     let top: Cell, bottom: Cell;
     const n = this.Rooms[idRoom].match.at(-1)!.boards.length;
@@ -458,37 +412,11 @@ export class GameService {
       } else break;
     }
     if (line1 >= 5) {
-      this.Rooms[idRoom].match.at(-1)!.stateGame =
-        this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
-      const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
-      if (userTurn === 0) {
-        this.Rooms[idRoom].ratio[0].win++;
-        this.Rooms[idRoom].ratio[1].loose++;
-      } else {
-        this.Rooms[idRoom].ratio[1].win++;
-        this.Rooms[idRoom].ratio[0].loose++;
-      }
-      return {
-        state: 'ENDGAME',
-        client1: {
-          idUser: this.Rooms[idRoom].user[0].idUser,
-          socket: this.Rooms[idRoom].user[0].socketUser,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: this.Rooms[idRoom].user[1]!.idUser!,
-          socket: this.Rooms[idRoom].user[1]!.socketUser!,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        ratio: this.Rooms[idRoom].ratio,
+      lines.push({
         typeLine: 1,
         top: top,
         bottom: bottom,
-        lastTurn: {
-          x: x,
-          y: y,
-        },
-      };
+      });
     }
 
     // // Đường ngang
@@ -508,37 +436,11 @@ export class GameService {
       } else break;
     }
     if (line2 >= 5) {
-      this.Rooms[idRoom].match.at(-1)!.stateGame =
-        this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
-      const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
-      if (userTurn === 0) {
-        this.Rooms[idRoom].ratio[0].win++;
-        this.Rooms[idRoom].ratio[1].loose++;
-      } else {
-        this.Rooms[idRoom].ratio[1].win++;
-        this.Rooms[idRoom].ratio[0].loose++;
-      }
-      return {
-        state: 'ENDGAME',
-        client1: {
-          idUser: this.Rooms[idRoom].user[0].idUser,
-          socket: this.Rooms[idRoom].user[0].socketUser,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: this.Rooms[idRoom].user[1]!.idUser!,
-          socket: this.Rooms[idRoom].user[1]!.socketUser!,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        ratio: this.Rooms[idRoom].ratio,
+      lines.push({
         typeLine: 2,
         top: top,
         bottom: bottom,
-        lastTurn: {
-          x: x,
-          y: y,
-        },
-      };
+      });
     }
 
     // // Đường chéo huyền
@@ -558,37 +460,11 @@ export class GameService {
       } else break;
     }
     if (line3 >= 5) {
-      this.Rooms[idRoom].match.at(-1)!.stateGame =
-        this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
-      const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
-      if (userTurn === 0) {
-        this.Rooms[idRoom].ratio[0].win++;
-        this.Rooms[idRoom].ratio[1].loose++;
-      } else {
-        this.Rooms[idRoom].ratio[1].win++;
-        this.Rooms[idRoom].ratio[0].loose++;
-      }
-      return {
-        state: 'ENDGAME',
-        client1: {
-          idUser: this.Rooms[idRoom].user[0].idUser,
-          socket: this.Rooms[idRoom].user[0].socketUser,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: this.Rooms[idRoom].user[1]!.idUser!,
-          socket: this.Rooms[idRoom].user[1]!.socketUser!,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        ratio: this.Rooms[idRoom].ratio,
+      lines.push({
         typeLine: 3,
         top: top,
         bottom: bottom,
-        lastTurn: {
-          x: x,
-          y: y,
-        },
-      };
+      });
     }
 
     // // Đường chéo sắc
@@ -608,6 +484,14 @@ export class GameService {
       } else break;
     }
     if (line4 >= 5) {
+      lines.push({
+        typeLine: 4,
+        top: top,
+        bottom: bottom,
+      });
+    }
+
+    if (lines.length > 0) {
       this.Rooms[idRoom].match.at(-1)!.stateGame =
         this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
       const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
@@ -618,6 +502,14 @@ export class GameService {
         this.Rooms[idRoom].ratio[1].win++;
         this.Rooms[idRoom].ratio[0].loose++;
       }
+      this.Rooms[idRoom].match.at(-1)!.lines = lines;
+
+      // Update match table in database
+      const currMatch = this.Rooms[idRoom].match.at(-1)!;
+      const idMatchUpdate = currMatch.id;
+      const stateMatch = currMatch.userTurn === 0 ? 'WIN' : 'LOOSE';
+      this.matchService.updateStateMatch(idMatchUpdate, stateMatch);
+
       return {
         state: 'ENDGAME',
         client1: {
@@ -631,7 +523,7 @@ export class GameService {
           result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
         },
         ratio: this.Rooms[idRoom].ratio,
-        typeLine: 4,
+        lines: lines,
         top: top,
         bottom: bottom,
         lastTurn: {
@@ -689,7 +581,16 @@ export class GameService {
           if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1)
             this.Rooms[idRoom].match.at(-1)!.stateGame = 0;
           const socketUser = this.Rooms[idRoom].user[0].socketUser;
+
+          // Update match table in database
+          const currMatch = this.Rooms[idRoom].match.at(-1)!;
+          const idMatchUpdate = currMatch.id;
+          const stateMatch = 'WIN';
+          this.matchService.updateStateMatch(idMatchUpdate, stateMatch);
+
+          // Xóa phòng chơi
           delete this.Rooms[idRoom];
+
           return {
             users: [socketUser],
           };
@@ -698,6 +599,14 @@ export class GameService {
           if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1)
             this.Rooms[idRoom].match.at(-1)!.stateGame = 1;
           const socketUser = this.Rooms[idRoom].user[1].socketUser;
+
+          // Update match table in database
+          const currMatch = this.Rooms[idRoom].match.at(-1)!;
+          const idMatchUpdate = currMatch.id;
+          const stateMatch = 'LOOSE';
+          this.matchService.updateStateMatch(idMatchUpdate, stateMatch);
+
+          // Xóa phòng chơi
           delete this.Rooms[idRoom];
           return {
             users: [socketUser],
@@ -730,6 +639,7 @@ export class GameService {
     };
     userTurn?: 0 | 1;
     userX?: 0 | 1;
+    numMove?: number;
     socket?: Socket;
     ratio?: {
       0: {
@@ -805,9 +715,11 @@ export class GameService {
       id: match.id,
       userTurn: turn,
       userX: turn,
+      numMove: 0,
       boards: Array.from({ length: 16 }, () =>
         Array.from({ length: 16 }, () => -1),
       ),
+      lines: [],
       stateGame: -1,
       isU0Ready: 0,
       isU1Ready: 0,
@@ -818,8 +730,9 @@ export class GameService {
       user: this.Rooms[idRoom].user,
       match: this.Rooms[idRoom].match.at(-1)!,
       ratio: this.Rooms[idRoom].ratio,
-      userTurn: turn,
-      userX: turn,
+      userTurn: turn, // Ai đi trước
+      userX: turn, // Ai là X
+      numMove: 0, // Số lượt đánh
     };
   }
 }

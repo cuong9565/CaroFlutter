@@ -291,6 +291,8 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                                           visitedO,
                                           hoverCell,
                                           currMoveIsX,
+                                          [],
+                                          -1,
                                         ),
                                   ),
                                 ),

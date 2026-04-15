@@ -49,9 +49,17 @@ export type ResponseMovePosition = {
     socket: Socket;
     result: number; // 0 => Thắng, 1 => Thua, 2 => Hòa
   };
-  typeLine?: number;
-  top?: Cell;
-  bottom?: Cell;
+  lines?: {
+    typeLine: number;
+    top: {
+      x: number;
+      y: number;
+    };
+    bottom: {
+      x: number;
+      y: number;
+    };
+  }[];
   lastTurn?: Cell;
 };
 
@@ -98,10 +106,22 @@ export type RoomsType = {
       id: string;
       userTurn: number; // 0 || 1
       userX: number; // 0 || 1
+      numMove: number;
       boards: number[][]; // -1: null, 0: X, 1: O
       stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
       isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
       isU1Ready: number;
+      lines: {
+        typeLine: number;
+        top: {
+          x: number;
+          y: number;
+        };
+        bottom: {
+          x: number;
+          y: number;
+        };
+      }[];
     }[];
     ratio: {
       0: {
@@ -152,6 +172,7 @@ export type ResponseStartGameType = {
   };
   userTurn?: number;
   userX?: number;
+  numMove?: number;
   ratio?: {
     0: {
       win: number;
@@ -164,6 +185,17 @@ export type ResponseStartGameType = {
       draw: number;
     };
   };
+  lines?: {
+    typeLine: number;
+    top: {
+      x: number;
+      y: number;
+    };
+    bottom: {
+      x: number;
+      y: number;
+    };
+  }[];
 };
 
 export type RequestOnMove = {
@@ -200,7 +232,17 @@ export type ResponseOnMovePosition = {
       draw: number;
     };
   };
-  typeLine?: number;
+  lines?: {
+    typeLine: number;
+    top: {
+      x: number;
+      y: number;
+    };
+    bottom: {
+      x: number;
+      y: number;
+    };
+  }[];
   top?: Cell;
   bottom?: Cell;
   lastTurn?: Cell;
