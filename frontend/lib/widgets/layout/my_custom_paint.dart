@@ -71,7 +71,7 @@ class _MyCustomPaintX extends CustomPainter {
 
 class CircleCountDown extends StatefulWidget {
   final double size;
-  final int seconds;
+  final double seconds;
   final bool running;
   const CircleCountDown({
     super.key,
@@ -93,7 +93,7 @@ class _CircleCountDown extends State<CircleCountDown>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(seconds: widget.seconds),
+      duration: Duration(milliseconds: (widget.seconds * 1000).round()),
     );
     if (widget.running) _controller.forward();
   }
