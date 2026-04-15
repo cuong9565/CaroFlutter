@@ -122,6 +122,8 @@ export type RoomsType = {
           y: number;
         };
       }[];
+      turnTimeout?: NodeJS.Timeout;
+      turnTimeoutExpiresAt?: number;
     }[];
     ratio: {
       0: {
@@ -136,6 +138,30 @@ export type RoomsType = {
       };
     };
   };
+};
+
+export type MatchType = {
+  id: string;
+  userTurn: number; // 0 || 1
+  userX: number; // 0 || 1
+  numMove: number;
+  boards: number[][]; // -1: null, 0: X, 1: O
+  stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
+  isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
+  isU1Ready: number;
+  lines: {
+    typeLine: number;
+    top: {
+      x: number;
+      y: number;
+    };
+    bottom: {
+      x: number;
+      y: number;
+    };
+  }[];
+  turnTimeout?: NodeJS.Timeout;
+  turnTimeoutExpiresAt?: number;
 };
 
 export type RequestStartGameType = {

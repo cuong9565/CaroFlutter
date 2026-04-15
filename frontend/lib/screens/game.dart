@@ -41,14 +41,16 @@ class Game extends StatelessWidget{
                   ),
                   CircleCountDown(
                     size: 40, 
-                    seconds: 5
+                    seconds: 5,
+                    running: true,
                   ),
                   Text("0", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
                   Text(":", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
                   Text("0", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
                   CircleCountDown(
                     size: 40, 
-                    seconds: 5
+                    seconds: 5,
+                    running: true,
                   ),
                   Column(
                     spacing: 0,

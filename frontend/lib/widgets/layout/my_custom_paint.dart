@@ -72,12 +72,16 @@ class _MyCustomPaintX extends CustomPainter {
 class CircleCountDown extends StatefulWidget {
   final double size;
   final int seconds;
-  const CircleCountDown({super.key, required this.size, required this.seconds});
+  final bool running;
+  const CircleCountDown({
+    super.key,
+    required this.size,
+    required this.seconds,
+    required this.running,
+  });
 
   @override
-  State<StatefulWidget> createState() {
-    return _CircleCountDown();
-  }
+  State<StatefulWidget> createState() => _CircleCountDown();
 }
 
 class _CircleCountDown extends State<CircleCountDown>
@@ -90,13 +94,33 @@ class _CircleCountDown extends State<CircleCountDown>
     _controller = AnimationController(
       vsync: this,
       duration: Duration(seconds: widget.seconds),
-    )..forward();
+    );
+    if (widget.running) _controller.forward();
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant CircleCountDown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.running) {
+      if (oldWidget.running) {
+        // NOT THING
+      } else {
+        _controller.reset();
+        _controller.forward();
+      }
+    } else {
+      if (oldWidget.running) {
+        _controller.reset();
+      } else {
+        // NOT THING
+      }
+    }
   }
 
   @override

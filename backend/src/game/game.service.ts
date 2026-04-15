@@ -3,6 +3,7 @@ import { Socket } from 'socket.io';
 import {
   Cell,
   MatchesType,
+  MatchType,
   MovePosition,
   QueueGameOnlineType,
   RequestCreateRoomType,
@@ -26,6 +27,8 @@ export class GameService {
   private QueueGameOnline: QueueGameOnlineType = [];
   private RoomsOnlineGame: RoomsOnlineGameType = {};
   private Rooms: RoomsType = {};
+  private TIME_LIMIT: number = 10 * 1000; // 30 giây
+
   constructor(
     private readonly matchesPlayerService: MatchesPlayerService,
     private readonly matchService: MatchService,
@@ -372,8 +375,11 @@ export class GameService {
       };
     }
 
+    // Lấy trận đấu hiện tại
+    const currentMatch = this.Rooms[idRoom].match.at(-1)!;
+
     // Check valid user
-    const turn = this.Rooms[idRoom].match.at(-1)?.userTurn;
+    const turn = currentMatch.userTurn;
     if (this.Rooms[idRoom].user[turn === 0 ? 0 : 1]!.idUser != idUser) {
       return {
         state: 'ERROR',
@@ -386,6 +392,9 @@ export class GameService {
         state: 'ERROR',
       };
     }
+
+    // Xóa TIMEOUT cũ
+    if (currentMatch.turnTimeout) clearTimeout(currentMatch.turnTimeout);
 
     // Update board
     this.Rooms[idRoom].match.at(-1)!.boards[x][y] = turn!;
@@ -535,6 +544,14 @@ export class GameService {
 
     // Đổi lượt chơi
     this.Rooms[idRoom].match.at(-1)!.userTurn = 1 - turn!;
+
+    // SET TIMEOUT MỚI cho lượt tiếp theo
+    const now = Date.now();
+    currentMatch.turnTimeoutExpiresAt = now + this.TIME_LIMIT;
+
+    currentMatch.turnTimeout = setTimeout(() => {
+      this.handleTurnTimeout(idRoom, currentMatch);
+    }, this.TIME_LIMIT);
 
     return {
       state: 'OK', // status: "OK" => Da di, "ERROR" => LOI
@@ -708,10 +725,15 @@ export class GameService {
   }
 
   async CreateNewMatch(idRoom: string) {
+    const room = this.Rooms[idRoom];
+    if (!room) throw new Error('Room not found');
+
     const match = await this.matchService.createMatch(idRoom);
     const turn: 0 | 1 = Math.floor(Math.random() * 2) as 0 | 1;
 
-    this.Rooms[idRoom].match.push({
+    const now = Date.now();
+
+    const newMatch = {
       id: match.id,
       userTurn: turn,
       userX: turn,
@@ -723,7 +745,18 @@ export class GameService {
       stateGame: -1,
       isU0Ready: 0,
       isU1Ready: 0,
-    });
+
+      // Timeout
+      turnTimeoutExpiresAt: now + this.TIME_LIMIT,
+      turnTimeout: undefined as NodeJS.Timeout | undefined,
+    };
+
+    // Set timeout
+    newMatch.turnTimeout = setTimeout(() => {
+      this.handleTurnTimeout(idRoom, newMatch);
+    }, this.TIME_LIMIT);
+
+    room.match.push(newMatch);
 
     return {
       state: 'PLAY',
@@ -734,5 +767,46 @@ export class GameService {
       userX: turn, // Ai là X
       numMove: 0, // Số lượt đánh
     };
+  }
+
+  private handleTurnTimeout(idRoom: string, match: MatchType) {
+    if (match.stateGame !== -1) return;
+
+    const room = this.Rooms[idRoom];
+    if (!room) return;
+
+    // Người thua
+    const loser = match.userTurn;
+    // Người thắng
+    const winner = 1 - loser;
+
+    // Update người thắng
+    match.stateGame = winner;
+
+    // Update ratio
+    room.ratio[winner].win++;
+    room.ratio[loser].loose++;
+
+    // Update DB
+    const stateMatch = winner === 0 ? 'WIN' : 'LOOSE';
+    this.matchService.updateStateMatch(match.id, stateMatch);
+
+    // Emit kết quả về client
+    const socketWinner = room.user[winner].socketUser;
+    const socketLoser = room.user[loser]!.socketUser;
+
+    socketWinner.emit('response-on-move', {
+      state: 'TIMEOUT',
+      result: 0,
+      yourRation: room.ratio[winner],
+      opponentRation: room.ratio[loser],
+    });
+
+    socketLoser!.emit('response-on-move', {
+      state: 'TIMEOUT',
+      result: 1,
+      yourRation: room.ratio[winner],
+      opponentRation: room.ratio[loser],
+    });
   }
 }

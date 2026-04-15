@@ -179,6 +179,16 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
             }
           }
           return;
+        } else if (data['state'] == "TIMEOUT") {
+          yourTurn = false;
+          yourRationWin = data['yourRation']['win'];
+          yourRationLoose = data['yourRation']['loose'];
+          yourRationDraw = data['yourRation']['draw'];
+          opponentRationWin = data['opponentRation']['win'];
+          opponentRationLoose = data['opponentRation']['loose'];
+          opponentRationDraw = data['opponentRation']['draw'];
+          stateGame = data['result'];
+          return;
         }
         yourTurn = true;
         if (!yourX) {
@@ -309,7 +319,11 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                             ),
                           ],
                         ),
-                        CircleCountDown(size: 40, seconds: 5),
+                        CircleCountDown(
+                          size: 40,
+                          seconds: 10,
+                          running: yourTurn && stateGame == -1,
+                        ),
                         Text(
                           yourRationWin.toString(),
                           style: TextStyle(
@@ -334,7 +348,11 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                             color: Colors.grey[600],
                           ),
                         ),
-                        CircleCountDown(size: 40, seconds: 5),
+                        CircleCountDown(
+                          size: 40,
+                          seconds: 10,
+                          running: !yourTurn && stateGame == -1,
+                        ),
                         Column(
                           spacing: 0,
                           mainAxisAlignment: MainAxisAlignment.center,

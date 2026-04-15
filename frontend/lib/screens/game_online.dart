@@ -165,7 +165,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                             ),
                           ],
                         ),
-                        CircleCountDown(size: 40, seconds: 5),
+                        CircleCountDown(size: 40, seconds: 5, running: true,),
                         Text(
                           "0",
                           style: TextStyle(
@@ -190,7 +190,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
                             color: Colors.grey[600],
                           ),
                         ),
-                        CircleCountDown(size: 40, seconds: 5),
+                        CircleCountDown(size: 40, seconds: 5, running: true,),
                         Column(
                           spacing: 0,
                           mainAxisAlignment: MainAxisAlignment.center,
