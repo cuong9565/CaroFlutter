@@ -7,6 +7,7 @@ import 'package:frontend/widgets/buttons/button.dart';
 import 'package:frontend/widgets/layout/frame.dart';
 import 'package:frontend/widgets/layout/my_custom_paint.dart';
 import 'package:frontend/widgets/layout/my_divider.dart';
+import 'package:frontend/widgets/layout/player_avatar.dart';
 import 'package:go_router/go_router.dart';
 
 class GameOnline extends ConsumerStatefulWidget {
@@ -18,6 +19,8 @@ class GameOnline extends ConsumerStatefulWidget {
 class _GameOnlineState extends ConsumerState<GameOnline> {
   late bool currMoveIsX;
   late bool isYourTurn;
+  String opponentName = 'Đối thủ';
+  String? opponentAvatarUrl;
   int status = -1; // -1: Chưa đấu xong, 0 => Thắng, 1 => Thua, 2 => Hòa
   final int gridSize = 16;
   final double cellSize = 25;
@@ -122,243 +125,270 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
     return ref
         .watch(userNotifier)
         .when(
-          data: (data) => Column(
-            children: [
-              Frame(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Row(
-                      // spacing: 2,
-                      children: [
-                        currMoveIsX
-                            ? MyCustomPaintX(size: 25)
-                            : MyCustomPaintO(size: 25),
-                      ],
-                    ),
-                    Row(
-                      spacing: 10,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Column(
-                          spacing: 0,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "User1",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
+          data: (data) {
+            final currentUserName =
+                data?['user']?['username']?.toString() ?? 'Bạn';
+            final currentUserAvatarUrl = data?['user']?['avatar_url']
+                ?.toString();
+            final currentUserStatus = isYourTurn ? 'Đang suy nghĩ' : '';
+            final opponentStatus = !isYourTurn ? 'Đang suy nghĩ' : '';
+
+            return Column(
+              children: [
+                Frame(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Row(
+                        // spacing: 2,
+                        children: [
+                          currMoveIsX
+                              ? MyCustomPaintX(size: 25)
+                              : MyCustomPaintO(size: 25),
+                        ],
+                      ),
+                      Row(
+                        spacing: 10,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Column(
+                            spacing: 0,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                currentUserName,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
                               ),
-                            ),
-                            Text(
-                              "12 giây",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
+                              Text(
+                                currentUserStatus,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        CircleCountDown(size: 40, seconds: 5, running: true,),
-                        Text(
-                          "0",
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
+                            ],
                           ),
-                        ),
-                        Text(
-                          ":",
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
+                          PlayerAvatar(
+                            name: currentUserName,
+                            avatarUrl: currentUserAvatarUrl,
+                            size: 40,
                           ),
-                        ),
-                        Text(
-                          "0",
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
+                          Text(
+                            "0",
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[600],
+                            ),
                           ),
-                        ),
-                        CircleCountDown(size: 40, seconds: 5, running: true,),
-                        Column(
-                          spacing: 0,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "User1",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
-                              ),
+                          Text(
+                            ":",
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[600],
                             ),
-                            Text(
-                              "12 giây",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
-                              ),
+                          ),
+                          Text(
+                            "0",
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[600],
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        !currMoveIsX
-                            ? MyCustomPaintX(size: 25)
-                            : MyCustomPaintO(size: 25),
-                      ],
-                    ),
-                  ],
+                          ),
+                           PlayerAvatar(
+                            name: opponentName,
+                            avatarUrl: opponentAvatarUrl,
+                            size: 40,
+                          ),
+                          Column(
+                            spacing: 0,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                opponentName,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              Text(
+                                opponentStatus,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                         
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          !currMoveIsX
+                              ? MyCustomPaintX(size: 25)
+                              : MyCustomPaintO(size: 25),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              MyDivider(),
-              Expanded(
-                child: InteractiveViewer(
-                  minScale: 1.0,
-                  maxScale: 3.0,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: constraints.minWidth,
-                              minHeight: constraints.minHeight,
-                            ),
-                            child: Center(
-                              child: MouseRegion(
-                                onHover: (event) {
-                                  if (!isYourTurn) {
-                                    hoverCell = null;
-                                    return;
-                                  }
-                                  final locationPostion = event.localPosition;
-                                  int row = (locationPostion.dy / cellSize)
-                                      .floor();
-                                  int col = (locationPostion.dx / cellSize)
-                                      .floor();
-                                  if (0 <= row &&
-                                      row < gridSize &&
-                                      0 <= col &&
-                                      col < gridSize &&
-                                      !visitedX.contains(
-                                        Offset(row.toDouble(), col.toDouble()),
-                                      ) &&
-                                      !visitedO.contains(
-                                        Offset(row.toDouble(), col.toDouble()),
-                                      )) {
-                                    setState(() {
-                                      hoverCell = Offset(
-                                        row.toDouble(),
-                                        col.toDouble(),
-                                      );
-                                    });
-                                  } else {
-                                    setState(() {
+                MyDivider(),
+                Expanded(
+                  child: InteractiveViewer(
+                    minScale: 1.0,
+                    maxScale: 3.0,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minWidth: constraints.minWidth,
+                                minHeight: constraints.minHeight,
+                              ),
+                              child: Center(
+                                child: MouseRegion(
+                                  onHover: (event) {
+                                    if (!isYourTurn) {
                                       hoverCell = null;
-                                    });
-                                  }
-                                },
-                                child: GestureDetector(
-                                  onTapUp: _handelOnTapUp,
-                                  child: CustomPaint(
-                                    size: Size(
-                                      gridSize * cellSize,
-                                      gridSize * cellSize,
+                                      return;
+                                    }
+                                    final locationPostion = event.localPosition;
+                                    int row = (locationPostion.dy / cellSize)
+                                        .floor();
+                                    int col = (locationPostion.dx / cellSize)
+                                        .floor();
+                                    if (0 <= row &&
+                                        row < gridSize &&
+                                        0 <= col &&
+                                        col < gridSize &&
+                                        !visitedX.contains(
+                                          Offset(
+                                            row.toDouble(),
+                                            col.toDouble(),
+                                          ),
+                                        ) &&
+                                        !visitedO.contains(
+                                          Offset(
+                                            row.toDouble(),
+                                            col.toDouble(),
+                                          ),
+                                        )) {
+                                      setState(() {
+                                        hoverCell = Offset(
+                                          row.toDouble(),
+                                          col.toDouble(),
+                                        );
+                                      });
+                                    } else {
+                                      setState(() {
+                                        hoverCell = null;
+                                      });
+                                    }
+                                  },
+                                  child: GestureDetector(
+                                    onTapUp: _handelOnTapUp,
+                                    child: CustomPaint(
+                                      size: Size(
+                                        gridSize * cellSize,
+                                        gridSize * cellSize,
+                                      ),
+                                      painter:
+                                          MyCustomPaintGameBoardCustomPainter(
+                                            gridSize,
+                                            cellSize,
+                                            visitedX,
+                                            visitedO,
+                                            hoverCell,
+                                            currMoveIsX,
+                                            [],
+                                            -1,
+                                          ),
                                     ),
-                                    painter:
-                                        MyCustomPaintGameBoardCustomPainter(
-                                          gridSize,
-                                          cellSize,
-                                          visitedX,
-                                          visitedO,
-                                          hoverCell,
-                                          currMoveIsX,
-                                          [],
-                                          -1,
-                                        ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              MyDivider(),
-              Frame(
-                child: Row(
-                  children: [
-                    ButtonRectangle2(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: Text("Bạn có chắc muốn thoát?"),
-                              content: Text(
-                                "Việc hủy bỏ ván đấu mặc định đối thủ sẽ thắng.",
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Hủy'),
-                                ),
-                                TextButton(
-                                  onPressed: () => {
-                                    SocketService.socket.emit('on-out-room', {
-                                      'roomId': idRoom,
-                                      'idUserLose': data?['user']['id'],
-                                    }),
-                                    context.go('/'),
-                                  },
-                                  child: const Text('Hủy bỏ ván đấu'),
-                                ),
-                              ],
-                            );
-                          },
                         );
                       },
-                      child: Row(
-                        spacing: 5,
-                        children: [
-                          Text(
-                            "Bỏ cuộc",
-                            style: TextStyle(fontSize: 16, color: Colors.black),
-                          ),
-                          Icon(
-                            FontAwesomeIcons.flag,
-                            size: 16,
-                            color: Colors.black,
-                          ),
-                        ],
-                      ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+                MyDivider(),
+                Frame(
+                  child: Row(
+                    children: [
+                      ButtonRectangle2(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text("Bạn có chắc muốn thoát?"),
+                                content: Text(
+                                  "Việc hủy bỏ ván đấu mặc định đối thủ sẽ thắng.",
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Hủy'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => {
+                                      SocketService.socket.emit('on-out-room', {
+                                        'roomId': idRoom,
+                                        'idUserLose': data?['user']['id'],
+                                      }),
+                                      context.go('/'),
+                                    },
+                                    child: const Text('Hủy bỏ ván đấu'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                        child: Row(
+                          spacing: 5,
+                          children: [
+                            Text(
+                              "Bỏ cuộc",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Icon(
+                              FontAwesomeIcons.flag,
+                              size: 16,
+                              color: Colors.black,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
           loading: () => Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text("Error: $e")),
         );
@@ -371,6 +401,8 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
         idRoom = data['idRoom'];
         isYourTurn = data['isYourTurn'];
         currMoveIsX = data['isYourTurn'];
+        opponentName = data['opponent']?['username']?.toString() ?? 'Đối thủ';
+        opponentAvatarUrl = data['opponent']?['avatarUrl']?.toString();
       });
     };
     onYourMove = (data) {

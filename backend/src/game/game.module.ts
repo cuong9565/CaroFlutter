@@ -3,9 +3,10 @@ import { GameGateWay } from './game.gateway';
 import { GameService } from './game.service';
 import { MatchesPlayerModule } from 'src/matches_player/matches_player.module';
 import { MatchModule } from 'src/match/match.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
-  imports: [MatchesPlayerModule, MatchModule],
+  imports: [MatchesPlayerModule, MatchModule, UsersModule],
   providers: [GameGateWay, GameService],
 })
 export class GameModule {}

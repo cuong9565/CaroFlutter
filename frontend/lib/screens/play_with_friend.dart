@@ -10,6 +10,7 @@ import 'package:frontend/widgets/layout/my_custom_paint.dart';
 import 'package:frontend/widgets/layout/my_divider.dart';
 import 'package:frontend/widgets/layout/my_error.dart';
 import 'package:frontend/widgets/layout/my_loading.dart';
+import 'package:frontend/widgets/layout/player_avatar.dart';
 import 'package:frontend/widgets/layout/my_qr.dart';
 import 'package:go_router/go_router.dart';
 
@@ -23,6 +24,8 @@ class PlayWithFriend extends ConsumerStatefulWidget {
 class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
   late String idRoom;
   late String idUser;
+  String opponentName = 'Đối thủ';
+  String? opponentAvatarUrl;
   String startGame = ""; // "" || "QR" || ERROR || PLAY
   int isUserReady = 0; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
   int isYouReady = 0;
@@ -98,6 +101,9 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                 ),
               )
               .toList();
+
+          opponentName = data['opponent']?['username']?.toString() ?? 'Đối thủ';
+          opponentAvatarUrl = data['opponent']?['avatarUrl']?.toString();
 
           if (isOverLay) {
             isOverLay = false;
@@ -276,251 +282,273 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
     return ref
         .watch(userNotifier)
         .when(
-          data: (data) => Column(
-            children: [
-              Frame(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Row(
-                      // spacing: 2,
-                      children: [
-                        yourX
-                            ? MyCustomPaintX(size: 25)
-                            : MyCustomPaintO(size: 25),
-                      ],
-                    ),
-                    Row(
-                      spacing: 10,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Column(
-                          spacing: 0,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "User1",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
+          data: (data) {
+            final currentUserName =
+                data?['user']?['username']?.toString() ?? 'Bạn';
+            final currentUserAvatarUrl = data?['user']?['avatar_url']
+                ?.toString();
+            final currentUserStatus = yourTurn && stateGame == -1
+                ? 'Đang suy nghĩ'
+                : '';
+            final opponentStatus = !yourTurn && stateGame == -1
+                ? 'Đang suy nghĩ'
+                : '';
+
+            return Column(
+              children: [
+                Frame(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Row(
+                        // spacing: 2,
+                        children: [
+                          yourX
+                              ? MyCustomPaintX(size: 25)
+                              : MyCustomPaintO(size: 25),
+                        ],
+                      ),
+                      Row(
+                        spacing: 10,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Column(
+                            spacing: 0,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                currentUserName,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
                               ),
-                            ),
-                            Text(
-                              "12 giây",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
+                              Text(
+                                currentUserStatus,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        CircleCountDown(
-                          size: 40,
-                          seconds: 10,
-                          running: yourTurn && stateGame == -1,
-                        ),
-                        Text(
-                          yourRationWin.toString(),
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
+                            ],
                           ),
-                        ),
-                        Text(
-                          ":",
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
+                          PlayerAvatar(
+                            name: currentUserName,
+                            avatarUrl: currentUserAvatarUrl,
+                            size: 40,
                           ),
-                        ),
-                        Text(
-                          opponentRationWin.toString(),
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
+                          Text(
+                            yourRationWin.toString(),
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[600],
+                            ),
                           ),
-                        ),
-                        CircleCountDown(
-                          size: 40,
-                          seconds: 10,
-                          running: !yourTurn && stateGame == -1,
-                        ),
-                        Column(
-                          spacing: 0,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "User1",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
-                              ),
+                          Text(
+                            ":",
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[600],
                             ),
-                            Text(
-                              "12 giây",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
-                              ),
+                          ),
+                          Text(
+                            opponentRationWin.toString(),
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[600],
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        !yourX
-                            ? MyCustomPaintX(size: 25)
-                            : MyCustomPaintO(size: 25),
-                      ],
-                    ),
-                  ],
+                          ),
+                          PlayerAvatar(
+                            name: opponentName,
+                            avatarUrl: opponentAvatarUrl,
+                            size: 40,
+                          ),
+                          Column(
+                            spacing: 0,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                opponentName,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              Text(
+                                opponentStatus,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          !yourX
+                              ? MyCustomPaintX(size: 25)
+                              : MyCustomPaintO(size: 25),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              MyDivider(),
-              Expanded(
-                child: InteractiveViewer(
-                  minScale: 1.0,
-                  maxScale: 3.0,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: constraints.minWidth,
-                              minHeight: constraints.minHeight,
-                            ),
-                            child: Center(
-                              child: MouseRegion(
-                                onHover: (event) {
-                                  if (!yourTurn) {
-                                    hoverCell = null;
-                                    return;
-                                  }
-                                  final locationPostion = event.localPosition;
-                                  int row = (locationPostion.dy / cellSize)
-                                      .floor();
-                                  int col = (locationPostion.dx / cellSize)
-                                      .floor();
-                                  if (0 <= row &&
-                                      row < gridSize &&
-                                      0 <= col &&
-                                      col < gridSize &&
-                                      !visitedX.contains(
-                                        Offset(row.toDouble(), col.toDouble()),
-                                      ) &&
-                                      !visitedO.contains(
-                                        Offset(row.toDouble(), col.toDouble()),
-                                      )) {
-                                    setState(() {
-                                      hoverCell = Offset(
-                                        row.toDouble(),
-                                        col.toDouble(),
-                                      );
-                                    });
-                                  } else {
-                                    setState(() {
+                MyDivider(),
+                Expanded(
+                  child: InteractiveViewer(
+                    minScale: 1.0,
+                    maxScale: 3.0,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minWidth: constraints.minWidth,
+                                minHeight: constraints.minHeight,
+                              ),
+                              child: Center(
+                                child: MouseRegion(
+                                  onHover: (event) {
+                                    if (!yourTurn) {
                                       hoverCell = null;
-                                    });
-                                  }
-                                },
-                                child: GestureDetector(
-                                  onTapUp: _handelOnTapUp,
-                                  child: CustomPaint(
-                                    size: Size(
-                                      gridSize * cellSize,
-                                      gridSize * cellSize,
+                                      return;
+                                    }
+                                    final locationPostion = event.localPosition;
+                                    int row = (locationPostion.dy / cellSize)
+                                        .floor();
+                                    int col = (locationPostion.dx / cellSize)
+                                        .floor();
+                                    if (0 <= row &&
+                                        row < gridSize &&
+                                        0 <= col &&
+                                        col < gridSize &&
+                                        !visitedX.contains(
+                                          Offset(
+                                            row.toDouble(),
+                                            col.toDouble(),
+                                          ),
+                                        ) &&
+                                        !visitedO.contains(
+                                          Offset(
+                                            row.toDouble(),
+                                            col.toDouble(),
+                                          ),
+                                        )) {
+                                      setState(() {
+                                        hoverCell = Offset(
+                                          row.toDouble(),
+                                          col.toDouble(),
+                                        );
+                                      });
+                                    } else {
+                                      setState(() {
+                                        hoverCell = null;
+                                      });
+                                    }
+                                  },
+                                  child: GestureDetector(
+                                    onTapUp: _handelOnTapUp,
+                                    child: CustomPaint(
+                                      size: Size(
+                                        gridSize * cellSize,
+                                        gridSize * cellSize,
+                                      ),
+                                      painter:
+                                          MyCustomPaintGameBoardCustomPainter(
+                                            gridSize,
+                                            cellSize,
+                                            visitedX,
+                                            visitedO,
+                                            hoverCell,
+                                            yourX,
+                                            lines,
+                                            stateGame,
+                                          ),
                                     ),
-                                    painter:
-                                        MyCustomPaintGameBoardCustomPainter(
-                                          gridSize,
-                                          cellSize,
-                                          visitedX,
-                                          visitedO,
-                                          hoverCell,
-                                          yourX,
-                                          lines,
-                                          stateGame,
-                                        ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              MyDivider(),
-              Frame(
-                child: Row(
-                  children: [
-                    ButtonRectangle2(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: Text("Bạn có chắc muốn thoát?"),
-                              content: Text(
-                                "Việc hủy bỏ ván đấu mặc định đối thủ sẽ thắng.",
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Hủy'),
-                                ),
-                                TextButton(
-                                  onPressed: () => {
-                                    SocketService.socket.emit(
-                                      'request-out-room',
-                                      {'idRoom': idRoom, 'idUser': idUser},
-                                    ),
-                                    context.go('/'),
-                                  },
-                                  child: const Text('Hủy bỏ ván đấu'),
-                                ),
-                              ],
-                            );
-                          },
                         );
                       },
-                      child: Row(
-                        spacing: 5,
-                        children: [
-                          Text(
-                            "Bỏ cuộc",
-                            style: TextStyle(fontSize: 16, color: Colors.black),
-                          ),
-                          Icon(
-                            FontAwesomeIcons.flag,
-                            size: 16,
-                            color: Colors.black,
-                          ),
-                        ],
-                      ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+                MyDivider(),
+                Frame(
+                  child: Row(
+                    children: [
+                      ButtonRectangle2(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text("Bạn có chắc muốn thoát?"),
+                                content: Text(
+                                  "Việc hủy bỏ ván đấu mặc định đối thủ sẽ thắng.",
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Hủy'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => {
+                                      SocketService.socket.emit(
+                                        'request-out-room',
+                                        {'idRoom': idRoom, 'idUser': idUser},
+                                      ),
+                                      context.go('/'),
+                                    },
+                                    child: const Text('Hủy bỏ ván đấu'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                        child: Row(
+                          spacing: 5,
+                          children: [
+                            Text(
+                              "Bỏ cuộc",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Icon(
+                              FontAwesomeIcons.flag,
+                              size: 16,
+                              color: Colors.black,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
           loading: () => Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text("Error: $e")),
         );

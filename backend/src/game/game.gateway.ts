@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { GameService } from './game.service';
+import { UsersService } from 'src/users/users.service';
 import type {
   DataSendOnOutRoom,
   MovePosition,
@@ -24,7 +25,10 @@ import type {
   },
 })
 export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
-  constructor(private readonly gameService: GameService) {}
+  constructor(
+    private readonly gameService: GameService,
+    private readonly usersService: UsersService,
+  ) {}
   @WebSocketServer()
   server!: Server;
 
@@ -53,15 +57,29 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
       socket: client,
     });
     if (requestAddQueue !== null) {
-      const data = await this.gameService.StartGameOnline(requestAddQueue);
+      const [data, firstUser, secondUser] = await Promise.all([
+        this.gameService.StartGameOnline(requestAddQueue),
+        this.usersService.getUser(requestAddQueue.firstUser.idUser),
+        this.usersService.getUser(requestAddQueue.secondUser.idUser),
+      ]);
 
       requestAddQueue.firstUser.socket.emit('join-room', {
         idRoom: data.roomId,
         isYourTurn: data.isUser1Playfirst,
+        opponent: {
+          id: secondUser?.id,
+          username: secondUser?.username,
+          avatarUrl: secondUser?.avatar_url,
+        },
       });
       requestAddQueue.secondUser.socket.emit('join-room', {
         idRoom: data.roomId,
         isYourTurn: !data.isUser1Playfirst,
+        opponent: {
+          id: firstUser?.id,
+          username: firstUser?.username,
+          avatarUrl: firstUser?.avatar_url,
+        },
       });
     }
   }
@@ -128,6 +146,22 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
       idUser: data.idUser,
       socketUser: client,
     });
+
+    let user0Profile: { id?: string; username?: string; avatar_url?: string } | null =
+      null;
+    let user1Profile: { id?: string; username?: string; avatar_url?: string } | null =
+      null;
+    if (
+      (request.state === 'PLAY' || request.state === 'LOAD') &&
+      request.user?.[0].idUser &&
+      request.user?.[1]?.idUser
+    ) {
+      [user0Profile, user1Profile] = await Promise.all([
+        this.usersService.getUser(request.user[0].idUser),
+        this.usersService.getUser(request.user[1].idUser!),
+      ]);
+    }
+
     if (request.state !== 'PLAY' && request.state !== 'LOAD') {
       client.emit('response-start-game', {
         state: request.state,
@@ -147,6 +181,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         isYouReady: request.match?.isU0Ready,
         yourRation: request.ratio?.[0],
         opponentRation: request.ratio?.[1],
+        opponent: {
+          id: user1Profile?.id,
+          username: user1Profile?.username,
+          avatarUrl: user1Profile?.avatar_url,
+        },
         lines: [],
       });
       request.user![1]!.socketUser!.emit('response-start-game', {
@@ -160,6 +199,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         isYouReady: request.match?.isU1Ready,
         yourRation: request.ratio?.[1],
         opponentRation: request.ratio?.[0],
+        opponent: {
+          id: user0Profile?.id,
+          username: user0Profile?.username,
+          avatarUrl: user0Profile?.avatar_url,
+        },
         lines: [],
       });
     } else if (request.state === 'LOAD') {
@@ -182,6 +226,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           isYouReady: request.match?.isU0Ready,
           yourRation: request.ratio?.[0],
           opponentRation: request.ratio?.[1],
+          opponent: {
+            id: user1Profile?.id,
+            username: user1Profile?.username,
+            avatarUrl: user1Profile?.avatar_url,
+          },
           lines: request.lines,
         });
       } else if (request.user![1]!.idUser! === data.idUser) {
@@ -203,6 +252,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           isYouReady: request.match?.isU1Ready,
           yourRation: request.ratio?.[1],
           opponentRation: request.ratio?.[0],
+          opponent: {
+            id: user0Profile?.id,
+            username: user0Profile?.username,
+            avatarUrl: user0Profile?.avatar_url,
+          },
           lines: request.lines,
         });
       }
@@ -249,6 +303,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   async requestPlayagain(@MessageBody() data: RequestStartGameType) {
     const request = await this.gameService.RequestPlayagain(data);
     if (request.state === 'PLAY') {
+      const [user0Profile, user1Profile] = await Promise.all([
+        this.usersService.getUser(request.user![0].idUser),
+        this.usersService.getUser(request.user![1]!.idUser!),
+      ]);
+
       request.user![0].socketUser.emit('response-start-game', {
         state: request.state,
         yourTurn: request.userTurn === 0 ? true : false,
@@ -260,6 +319,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         isYouReady: request.match?.isU0Ready,
         yourRation: request.ratio?.[0],
         opponentRation: request.ratio?.[1],
+        opponent: {
+          id: user1Profile?.id,
+          username: user1Profile?.username,
+          avatarUrl: user1Profile?.avatar_url,
+        },
         lines: [],
       });
       request.user![1]!.socketUser!.emit('response-start-game', {
@@ -273,6 +337,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         isYouReady: request.match?.isU1Ready,
         yourRation: request.ratio?.[1],
         opponentRation: request.ratio?.[0],
+        opponent: {
+          id: user0Profile?.id,
+          username: user0Profile?.username,
+          avatarUrl: user0Profile?.avatar_url,
+        },
         lines: [],
       });
     } else if (request.state === 'ALERT') {
