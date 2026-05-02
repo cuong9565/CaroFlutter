@@ -12,7 +12,7 @@ export class User {
   type_login: number;
 
   @Column({ nullable: true })
-  avartar_url: string;
+  avatar_url: string;
 
   @Column()
   rating: number;

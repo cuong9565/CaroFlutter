@@ -21,7 +21,7 @@ export class ChatService {
 
     // Get sender info
     const senderData = await this.sql`
-      select id, username, type_login, avartar_url, rating, total_matches, total_wins, total_draws, total_losses
+      select id, username, type_login, avatar_url, rating, total_matches, total_wins, total_draws, total_losses
       from users
       where id = ${senderId}
       limit 1
@@ -48,7 +48,7 @@ export class ChatService {
     const convId = parseInt(conversationId);
     const data = await this.sql`
       select m.id, m.conversation_id as "conversationId", m.sender_id as "senderId", m.content, m.timestamp, m.is_read as "isRead",
-             u.id as "sender.id", u.username as "sender.username", u.type_login as "sender.type_login", u.avartar_url as "sender.avartar_url",
+             u.id as "sender.id", u.username as "sender.username", u.type_login as "sender.type_login", u.avatar_url as "sender.avatar_url",
              u.rating as "sender.rating", u.total_matches as "sender.total_matches", u.total_wins as "sender.total_wins",
              u.total_draws as "sender.total_draws", u.total_losses as "sender.total_losses"
       from messages m
@@ -68,7 +68,7 @@ export class ChatService {
         id: row['sender.id'],
         username: row['sender.username'],
         type_login: row['sender.type_login'],
-        avartar_url: row['sender.avartar_url'],
+        avatar_url: row['sender.avatar_url'],
         rating: row['sender.rating'],
         total_matches: row['sender.total_matches'],
         total_wins: row['sender.total_wins'],
@@ -141,11 +141,11 @@ export class ChatService {
              lm.id as "lastMessage.id", lm.conversation_id as "lastMessage.conversationId", lm.sender_id as "lastMessage.senderId",
              lm.content as "lastMessage.content", lm.timestamp as "lastMessage.timestamp", lm.is_read as "lastMessage.isRead",
              lm_u.id as "lastMessage.sender.id", lm_u.username as "lastMessage.sender.username", lm_u.type_login as "lastMessage.sender.type_login",
-             lm_u.avartar_url as "lastMessage.sender.avartar_url", lm_u.rating as "lastMessage.sender.rating",
+             lm_u.avatar_url as "lastMessage.sender.avatar_url", lm_u.rating as "lastMessage.sender.rating",
              lm_u.total_matches as "lastMessage.sender.total_matches", lm_u.total_wins as "lastMessage.sender.total_wins",
              lm_u.total_draws as "lastMessage.sender.total_draws", lm_u.total_losses as "lastMessage.sender.total_losses",
              p.user_id as "participant.id", p_u.username as "participant.username", p_u.type_login as "participant.type_login",
-             p_u.avartar_url as "participant.avartar_url", p_u.rating as "participant.rating",
+             p_u.avatar_url as "participant.avatar_url", p_u.rating as "participant.rating",
              p_u.total_matches as "participant.total_matches", p_u.total_wins as "participant.total_wins",
              p_u.total_draws as "participant.total_draws", p_u.total_losses as "participant.total_losses"
       from conversations c
@@ -179,7 +179,7 @@ export class ChatService {
               id: row['lastMessage.sender.id'],
               username: row['lastMessage.sender.username'],
               type_login: row['lastMessage.sender.type_login'],
-              avartar_url: row['lastMessage.sender.avartar_url'],
+              avatar_url: row['lastMessage.sender.avatar_url'],
               rating: row['lastMessage.sender.rating'],
               total_matches: row['lastMessage.sender.total_matches'],
               total_wins: row['lastMessage.sender.total_wins'],
@@ -196,7 +196,7 @@ export class ChatService {
         id: row['participant.id'],
         username: row['participant.username'],
         type_login: row['participant.type_login'],
-        avartar_url: row['participant.avartar_url'],
+        avatar_url: row['participant.avatar_url'],
         rating: row['participant.rating'],
         total_matches: row['participant.total_matches'],
         total_wins: row['participant.total_wins'],
@@ -246,7 +246,7 @@ export class ChatService {
     const convId = parseInt(conversationId);
     const data = await this.sql`
       select m.id, m.conversation_id as "conversationId", m.sender_id as "senderId", m.content, m.timestamp, m.is_read as "isRead",
-             u.id as "sender.id", u.username as "sender.username", u.type_login as "sender.type_login", u.avartar_url as "sender.avartar_url",
+             u.id as "sender.id", u.username as "sender.username", u.type_login as "sender.type_login", u.avatar_url as "sender.avatar_url",
              u.rating as "sender.rating", u.total_matches as "sender.total_matches", u.total_wins as "sender.total_wins",
              u.total_draws as "sender.total_draws", u.total_losses as "sender.total_losses"
       from messages m
@@ -265,7 +265,7 @@ export class ChatService {
         id: row['sender.id'],
         username: row['sender.username'],
         type_login: row['sender.type_login'],
-        avartar_url: row['sender.avartar_url'],
+        avatar_url: row['sender.avatar_url'],
         rating: row['sender.rating'],
         total_matches: row['sender.total_matches'],
         total_wins: row['sender.total_wins'],

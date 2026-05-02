@@ -27,7 +27,7 @@ export class UsersService {
 
   async createUserGmail(username: string, photoUrl: string) {
     await this.sql`
-      insert into users(username, avartar_url, type_login)
+      insert into users(username, avatar_url, type_login)
       values(${username}, ${photoUrl}, 2)`;
   }
 
@@ -39,9 +39,11 @@ export class UsersService {
 
   async getUser(id: string) {
     const data = await this.sql`
-      select * 
-      from users 
-      where id = ${id}
+      select u.*, coalesce(le.email, lg.email) as email
+      from users u
+      left join login_by_email le on u.id = le.iduser
+      left join login_by_gg lg on u.id = lg.iduser
+      where u.id = ${id}
       limit 1
     `;
     return data[0] ?? null;
@@ -50,7 +52,7 @@ export class UsersService {
   async updateUser(id: string, username: string, photoUrl: string) {
     await this.sql`
       update users 
-      set username = ${username}, avartar_url = ${photoUrl} 
+      set username = ${username}, avatar_url = ${photoUrl} 
       where id = ${id}
     `;
   }

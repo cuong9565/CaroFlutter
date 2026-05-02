@@ -53,7 +53,7 @@ CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"username" varchar(255) NOT NULL,
 	"type_login" integer DEFAULT 0 NOT NULL,
-	"avartar_url" varchar(255),
+	"avatar_url" varchar(255),
 	"rating" numeric(8, 2) DEFAULT '0' NOT NULL,
 	"total_matches" integer DEFAULT 0 NOT NULL,
 	"total_wins" integer DEFAULT 0 NOT NULL,
