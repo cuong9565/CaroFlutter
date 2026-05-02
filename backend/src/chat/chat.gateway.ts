@@ -19,7 +19,7 @@ type DataMessage = {
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ChatGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   constructor(private readonly chatService : ChatService){}
   afterInit(server: Server){
