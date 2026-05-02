@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Socket } from 'socket.io';
+import type { Database } from 'src/database/database.types';
 import {
   BotRoomsType,
   Cell,
@@ -32,13 +33,54 @@ export class GameService {
   private QueueGameOnline: QueueGameOnlineType = [];
   private RoomsOnlineGame: RoomsOnlineGameType = {};
   private Rooms: RoomsType = {};
-  private TIME_LIMIT: number = 10 * 1000; // 30 giây
+  private TIME_LIMIT: number = 30 * 1000; // 30 giây
+  private readonly DEFAULT_BOARD_SIZE = 5;
+  private readonly MIN_BOARD_SIZE = 10;
+  private readonly MAX_BOARD_SIZE = 50;
+  private boardSizeCache = this.DEFAULT_BOARD_SIZE;
+  private boardSizeLoadedAt = 0;
 
   private BotRooms: BotRoomsType = {};
   constructor(
+    @Inject('POSTGRES_POOL')
+    private readonly sql: Database,
     private readonly matchesPlayerService: MatchesPlayerService,
     private readonly matchService: MatchService,
   ) {}
+
+  getTurnTimeLimitMs(): number {
+    return this.TIME_LIMIT;
+  }
+
+  async getBoardSize(): Promise<number> {
+    const now = Date.now();
+    if (now - this.boardSizeLoadedAt < 60_000) {
+      return this.boardSizeCache;
+    }
+
+    try {
+      const rows = await this.sql`
+        select board_size
+        from game_settings
+        where board_size is not null
+        limit 1
+      `;
+      const rawValue = rows?.[0]?.board_size;
+      const parsed = Number(rawValue);
+      if (
+        Number.isInteger(parsed) &&
+        parsed >= this.MIN_BOARD_SIZE &&
+        parsed <= this.MAX_BOARD_SIZE
+      ) {
+        this.boardSizeCache = parsed;
+      }
+    } catch {
+      // Fallback default when table/column does not exist yet.
+    }
+
+    this.boardSizeLoadedAt = now;
+    return this.boardSizeCache;
+  }
 
   AddToQueue(user: UserRequestType) {
     this.QueueGameOnline.push(user);
@@ -74,14 +116,15 @@ export class GameService {
       true,
     );
 
+    const boardSize = await this.getBoardSize();
     const isUser1Playfirst = Math.random() < 0.5;
     this.RoomsOnlineGame[room['id']] = {
       firstUser: matches.firstUser,
       secondUser: matches.secondUser,
       isFirstUserMove: isUser1Playfirst,
       isX: isUser1Playfirst,
-      board: Array.from({ length: 16 }, () =>
-        Array.from({ length: 16 }, () => null),
+      board: Array.from({ length: boardSize }, () =>
+        Array.from({ length: boardSize }, () => null),
       ),
     };
 
@@ -554,6 +597,42 @@ export class GameService {
       };
     }
 
+    const currentBoard = this.Rooms[idRoom].match.at(-1)!.boards;
+    const totalCells = currentBoard.length * currentBoard.length;
+    const currentNumMove = this.Rooms[idRoom].match.at(-1)!.numMove;
+
+    // Hòa trận khi bàn cờ đã đầy và không có đường thắng
+    if (currentNumMove >= totalCells) {
+      this.Rooms[idRoom].match.at(-1)!.stateGame = 2;
+      this.Rooms[idRoom].match.at(-1)!.lines = [];
+      this.Rooms[idRoom].ratio[0].draw++;
+      this.Rooms[idRoom].ratio[1].draw++;
+
+      // Update match table in database
+      const currMatch = this.Rooms[idRoom].match.at(-1)!;
+      this.matchService.updateStateMatch(currMatch.id, 'DRAW');
+
+      return {
+        state: 'ENDGAME',
+        client1: {
+          idUser: this.Rooms[idRoom].user[0].idUser,
+          socket: this.Rooms[idRoom].user[0].socketUser,
+          result: 2,
+        },
+        client2: {
+          idUser: this.Rooms[idRoom].user[1]!.idUser!,
+          socket: this.Rooms[idRoom].user[1]!.socketUser!,
+          result: 2,
+        },
+        ratio: this.Rooms[idRoom].ratio,
+        lines: [],
+        lastTurn: {
+          x: x,
+          y: y,
+        },
+      };
+    }
+
     // Đổi lượt chơi
     this.Rooms[idRoom].match.at(-1)!.userTurn = 1 - turn!;
 
@@ -573,21 +652,25 @@ export class GameService {
         ]?.socketUser,
       x: x,
       y: y,
+      turnDeadlineMs: currentMatch.turnTimeoutExpiresAt,
     };
   }
 
-  StartGameWithBot(
-    data: RequestPlayWithBotType,
-  ): ResponseStartGameWithBotType {
+  StartGameWithBot(data: RequestPlayWithBotType): ResponseStartGameWithBotType {
     const idRoom =
-      'bot-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      'bot-' +
+      Date.now().toString(36) +
+      '-' +
+      Math.random().toString(36).slice(2, 8);
 
     this.BotRooms[idRoom] = {
       user: {
         idUser: data.idUser,
         socket: data.socketUser,
       },
-      board: Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => -1)),
+      board: Array.from({ length: 16 }, () =>
+        Array.from({ length: 16 }, () => -1),
+      ),
       userTurn: 0,
       userX: 0,
       stateGame: -1,
@@ -752,10 +835,17 @@ export class GameService {
       return [{ x: center, y: center }];
     }
 
-    return result.length > 0 ? result : [{ x: Math.floor(n / 2), y: Math.floor(n / 2) }];
+    return result.length > 0
+      ? result
+      : [{ x: Math.floor(n / 2), y: Math.floor(n / 2) }];
   }
 
-  private EvaluateMove(board: number[][], x: number, y: number, value: 0 | 1): number {
+  private EvaluateMove(
+    board: number[][],
+    x: number,
+    y: number,
+    value: 0 | 1,
+  ): number {
     if (board[x][y] !== -1) return -1;
 
     const directions = [
@@ -822,7 +912,13 @@ export class GameService {
   }
 
   private IsEmptyCell(board: number[][], x: number, y: number): boolean {
-    return x >= 0 && x < board.length && y >= 0 && y < board.length && board[x][y] === -1;
+    return (
+      x >= 0 &&
+      x < board.length &&
+      y >= 0 &&
+      y < board.length &&
+      board[x][y] === -1
+    );
   }
 
   private IsWinningMove(
@@ -864,10 +960,7 @@ export class GameService {
     const idUser = data.idUser;
     const idRoom = data.idRoom;
 
-    if (
-      this.BotRooms[idRoom] &&
-      this.BotRooms[idRoom].user.idUser === idUser
-    ) {
+    if (this.BotRooms[idRoom] && this.BotRooms[idRoom].user.idUser === idUser) {
       delete this.BotRooms[idRoom];
       return {
         users: [],
@@ -959,6 +1052,7 @@ export class GameService {
       stateGame: number;
       isU0Ready: number;
       isU1Ready: number;
+      turnTimeoutExpiresAt?: number;
     };
     userTurn?: 0 | 1;
     userX?: 0 | 1;
@@ -1034,6 +1128,7 @@ export class GameService {
     const room = this.Rooms[idRoom];
     if (!room) throw new Error('Room not found');
 
+    const boardSize = await this.getBoardSize();
     const match = await this.matchService.createMatch(idRoom);
     const turn: 0 | 1 = Math.floor(Math.random() * 2) as 0 | 1;
 
@@ -1044,8 +1139,8 @@ export class GameService {
       userTurn: turn,
       userX: turn,
       numMove: 0,
-      boards: Array.from({ length: 16 }, () =>
-        Array.from({ length: 16 }, () => -1),
+      boards: Array.from({ length: boardSize }, () =>
+        Array.from({ length: boardSize }, () => -1),
       ),
       lines: [],
       stateGame: -1,

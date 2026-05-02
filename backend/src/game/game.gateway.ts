@@ -224,6 +224,9 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           username: user1Profile?.username,
           avatarUrl: user1Profile?.avatar_url,
         },
+        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+        turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+        boardSize: request.match?.boards?.length,
         lines: [],
       });
       request.user![1]!.socketUser!.emit('response-start-game', {
@@ -242,6 +245,9 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           username: user0Profile?.username,
           avatarUrl: user0Profile?.avatar_url,
         },
+        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+        turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+        boardSize: request.match?.boards?.length,
         lines: [],
       });
     } else if (request.state === 'LOAD') {
@@ -269,6 +275,9 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
             username: user1Profile?.username,
             avatarUrl: user1Profile?.avatar_url,
           },
+          turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+          turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+          boardSize: request.match?.boards?.length,
           lines: request.lines,
         });
       } else if (request.user![1]!.idUser! === data.idUser) {
@@ -295,6 +304,9 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
             username: user0Profile?.username,
             avatarUrl: user0Profile?.avatar_url,
           },
+          turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+          turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+          boardSize: request.match?.boards?.length,
           lines: request.lines,
         });
       }
@@ -308,6 +320,8 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
       resPonseData.socketUser!.emit('response-on-move', {
         x: resPonseData.x,
         y: resPonseData.y,
+        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+        turnDeadlineMs: resPonseData.turnDeadlineMs,
       });
     } else if (resPonseData.state === 'ENDGAME') {
       resPonseData.client1!.socket.emit('response-on-move', {
@@ -362,6 +376,9 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           username: user1Profile?.username,
           avatarUrl: user1Profile?.avatar_url,
         },
+        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+        turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+        boardSize: request.match?.boards?.length,
         lines: [],
       });
       request.user![1]!.socketUser!.emit('response-start-game', {
@@ -380,6 +397,9 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           username: user0Profile?.username,
           avatarUrl: user0Profile?.avatar_url,
         },
+        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+        turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+        boardSize: request.match?.boards?.length,
         lines: [],
       });
     } else if (request.state === 'ALERT') {

@@ -195,6 +195,7 @@ export type ResponseStartGameType = {
     stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
     isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
     isU1Ready: number;
+    turnTimeoutExpiresAt?: number;
   };
   userTurn?: number;
   userX?: number;
@@ -274,6 +275,7 @@ export type ResponseOnMovePosition = {
   socketUser?: Socket;
   x?: number;
   y?: number;
+  turnDeadlineMs?: number;
   client1?: {
     idUser: string;
     socket: Socket;

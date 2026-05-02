@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -39,8 +41,12 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
   late int yourRationWin, yourRationLoose, yourRationDraw;
   late int opponentRationWin, opponentRationLoose, opponentRationDraw;
   late List<Line> lines;
-  final int gridSize = 16;
+  int gridSize = 16;
   final double cellSize = 25;
+  int turnDurationMs = 10000;
+  int remainingTurnSeconds = 0;
+  int? _turnDeadlineMs;
+  Timer? _turnCountdownTimer;
 
   Offset? hoverCell;
   Set<Offset> visitedX = {};
@@ -94,6 +100,13 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           stateGame = data['stateGame'];
           isUserReady = data['isUserReady'];
           isYouReady = data['isYouReady'];
+          turnDurationMs = (data['turnDurationMs'] as num?)?.toInt() ?? 10000;
+          final payloadBoardSize =
+              (data['boardSize'] as num?)?.toInt() ??
+              ((data['board'] as List?)?.length ?? gridSize);
+          if (payloadBoardSize > 0) {
+            gridSize = payloadBoardSize;
+          }
           yourRationWin = data['yourRation']['win'];
           yourRationLoose = data['yourRation']['loose'];
           yourRationDraw = data['yourRation']['draw'];
@@ -145,6 +158,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
 
           visitedX = newVisitedX;
           visitedO = newVisitedO;
+          _setTurnDeadline((data['turnDeadlineMs'] as num?)?.toInt());
         }
       });
     });
@@ -154,6 +168,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
       if (!mounted) return;
       setState(() {
         if (data['state'] == "ENDGAME") {
+          _stopTurnCountdown();
           yourTurn = false;
           yourRationWin = data['yourRation']['win'];
           yourRationLoose = data['yourRation']['loose'];
@@ -194,6 +209,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           }
           return;
         } else if (data['state'] == "TIMEOUT") {
+          _stopTurnCountdown();
           yourTurn = false;
           yourRationWin = data['yourRation']['win'];
           yourRationLoose = data['yourRation']['loose'];
@@ -205,6 +221,9 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           return;
         }
         yourTurn = true;
+        turnDurationMs =
+            (data['turnDurationMs'] as num?)?.toInt() ?? turnDurationMs;
+        _setTurnDeadline((data['turnDeadlineMs'] as num?)?.toInt());
         if (!yourX) {
           visitedX = {
             ...visitedX,
@@ -235,10 +254,13 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
       });
     });
 
-    socket.emit('request-start-game', {
-      'idRoom': idRoom,
-      'idUser': idUser,
-    });
+    socket.emit('request-start-game', {'idRoom': idRoom, 'idUser': idUser});
+  }
+
+  @override
+  void dispose() {
+    _stopTurnCountdown();
+    super.dispose();
   }
 
   @override
@@ -295,12 +317,18 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                 data?['user']?['username']?.toString() ?? 'Bạn';
             final currentUserAvatarUrl = data?['user']?['avatar_url']
                 ?.toString();
-            final currentUserStatus = yourTurn && stateGame == -1
-                ? 'Đang suy nghĩ'
+            final currentUserDisplayName = '$currentUserName (Bạn)';
+            final opponentDisplayName = '$opponentName (Đối thủ)';
+            final yourPiece = yourX ? 'X' : 'O';
+            final opponentPiece = yourX ? 'O' : 'X';
+            final currentUserStatus = stateGame == -1
+                ? (yourTurn ? 'Đang suy nghĩ' : 'Đang chờ')
                 : '';
-            final opponentStatus = !yourTurn && stateGame == -1
-                ? 'Đang suy nghĩ'
+            final opponentStatus = stateGame == -1
+                ? (!yourTurn ? 'Đang suy nghĩ' : 'Đang chờ')
                 : '';
+            final isYourTimerRunning = yourTurn && stateGame == -1;
+            final isOpponentTimerRunning = !yourTurn && stateGame == -1;
 
             return Column(
               children: [
@@ -328,20 +356,32 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                currentUserName,
+                                currentUserDisplayName,
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w300,
                                   color: Colors.black,
                                 ),
                               ),
-                              Text(
-                                currentUserStatus,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w300,
-                                  color: Colors.black,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    currentUserStatus,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w300,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  if (isYourTimerRunning) ...[
+                                    const SizedBox(width: 6),
+                                    _buildTimerChip(
+                                      pieceLabel: yourPiece,
+                                      seconds: remainingTurnSeconds,
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
@@ -385,20 +425,32 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                opponentName,
+                                opponentDisplayName,
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w300,
                                   color: Colors.black,
                                 ),
                               ),
-                              Text(
-                                opponentStatus,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w300,
-                                  color: Colors.black,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    opponentStatus,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w300,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  if (isOpponentTimerRunning) ...[
+                                    const SizedBox(width: 6),
+                                    _buildTimerChip(
+                                      pieceLabel: opponentPiece,
+                                      seconds: remainingTurnSeconds,
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
@@ -447,10 +499,16 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                                         0 <= col &&
                                         col < gridSize &&
                                         !visitedX.contains(
-                                          Offset(row.toDouble(), col.toDouble()),
+                                          Offset(
+                                            row.toDouble(),
+                                            col.toDouble(),
+                                          ),
                                         ) &&
                                         !visitedO.contains(
-                                          Offset(row.toDouble(), col.toDouble()),
+                                          Offset(
+                                            row.toDouble(),
+                                            col.toDouble(),
+                                          ),
                                         )) {
                                       setState(() {
                                         hoverCell = Offset(
@@ -514,10 +572,10 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                                   ),
                                   TextButton(
                                     onPressed: () {
-                                      SocketService.emit(
-                                        'request-out-room',
-                                        {'idRoom': idRoom, 'idUser': idUser},
-                                      );
+                                      SocketService.emit('request-out-room', {
+                                        'idRoom': idRoom,
+                                        'idUser': idUser,
+                                      });
                                       context.go('/');
                                     },
                                     child: const Text('Hủy bỏ ván đấu'),
@@ -574,6 +632,9 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           visitedO = {...visitedO, Offset(row.toDouble(), col.toDouble())};
         }
         yourTurn = false;
+        _setTurnDeadline(
+          DateTime.now().millisecondsSinceEpoch + turnDurationMs,
+        );
         hoverCell = null;
         SocketService.emit('request-on-move', {
           'idRoom': idRoom,
@@ -585,19 +646,99 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
     }
   }
 
+  void _setTurnDeadline(int? deadlineMs) {
+    if (deadlineMs == null || stateGame != -1) {
+      _stopTurnCountdown();
+      return;
+    }
+    _turnDeadlineMs = deadlineMs;
+    _startTurnCountdown();
+  }
+
+  void _startTurnCountdown() {
+    _turnCountdownTimer?.cancel();
+    _updateCountdownTick();
+    _turnCountdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateCountdownTick();
+    });
+  }
+
+  void _updateCountdownTick() {
+    if (!mounted) return;
+    if (_turnDeadlineMs == null || stateGame != -1) {
+      _stopTurnCountdown();
+      return;
+    }
+    final msLeft = _turnDeadlineMs! - DateTime.now().millisecondsSinceEpoch;
+    final secondsLeft = msLeft <= 0 ? 0 : ((msLeft + 999) ~/ 1000);
+
+    if (remainingTurnSeconds != secondsLeft) {
+      setState(() {
+        remainingTurnSeconds = secondsLeft;
+      });
+    }
+
+    if (secondsLeft <= 0) {
+      _turnCountdownTimer?.cancel();
+    }
+  }
+
+  void _stopTurnCountdown() {
+    _turnCountdownTimer?.cancel();
+    _turnCountdownTimer = null;
+    _turnDeadlineMs = null;
+    remainingTurnSeconds = 0;
+  }
+
+  Widget _buildTimerChip({required String pieceLabel, required int seconds}) {
+    final bool isUrgent = seconds <= 10;
+    final Color textColor = isUrgent ? Colors.red.shade700 : Colors.black87;
+    final Color background = isUrgent
+        ? Colors.red.withValues(alpha: 0.14)
+        : Colors.grey.withValues(alpha: 0.15);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isUrgent ? Colors.red.shade300 : Colors.transparent,
+        ),
+      ),
+      child: Text(
+        '$pieceLabel: ${seconds}s',
+        style: TextStyle(
+          fontSize: isUrgent ? 13 : 12,
+          fontWeight: isUrgent ? FontWeight.w700 : FontWeight.w500,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
   void stateEndGame() {
     // Đã kết thúc trận đấu
     WidgetsBinding.instance.addPostFrameCallback((_) {
       String str = "";
+      String subtitle = "";
+      Color titleColor = Colors.red;
       switch (stateGame) {
         case 0:
-          str = "Bạn đã thắng";
+          str = "Chiến thắng";
+          subtitle = "Bạn đã đánh bại đối thủ. Tiếp tục chơi lại?";
+          titleColor = Colors.green;
           break;
         case 1:
-          str = "Bạn đã thua";
+          str = "Thất bại";
+          subtitle = "Đối thủ đã giành chiến thắng. Bạn muốn phục thù không?";
+          titleColor = Colors.red;
           break;
         case 2:
-          str = "Bạn đã hòa";
+          str = "Hòa";
+          subtitle = "Trận đấu cân bằng. Bạn có muốn chơi tiếp không?";
+          titleColor = Colors.orange;
           break;
       }
       showDialog(
@@ -606,20 +747,47 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
         builder: (context) {
           return isYouReady == 1
               ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      spacing: 10,
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: 12,
                       children: [
-                        Text(
-                          "Đang chờ đối thủ...",
+                        Icon(
+                          Icons.hourglass_top_rounded,
+                          color: Colors.orange.shade700,
+                          size: 34,
+                        ),
+                        const Text(
+                          "Bạn đã sẵn sàng chơi lại",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 20,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
+                        Text(
+                          "Đanh chờ đối thủ xác nhận...",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
                         ElevatedButton(
                           onPressed: () {
                             SocketService.emit('request-out-room', {
@@ -628,72 +796,122 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                             });
                             context.go('/');
                           },
-                          child: Text('Rời khỏi phòng'),
+                          child: const Text('Rời khỏi phòng'),
                         ),
                       ],
                     ),
                   ),
                 )
               : Center(
-                  child: Column(
-                    spacing: 10,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        str,
-                        style: TextStyle(fontSize: 20, color: Colors.red),
-                      ),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      spacing: 12,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          str,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: titleColor,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: isUserReady == 0
+                              ? Text(
+                                  "Đối thủ chưa sẵn sàng",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                )
+                              : isUserReady == 1
+                              ? Text(
+                                  "Đối thủ đã sẵn sàng",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                )
+                              : Text(
+                                  "Đối thủ đã rời khỏi phòng",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                        ),
 
-                      isUserReady == 0
-                          ? Text(
-                              "Đối thủ chưa sẵn sàng",
-                              style: TextStyle(fontSize: 20, color: Colors.red),
-                            )
-                          : isUserReady == 1
-                          ? Text(
-                              "Đối thủ đã sẵn sàng",
-                              style: TextStyle(fontSize: 20, color: Colors.red),
-                            )
-                          : Text(
-                              "Đối thủ đã thoát",
-                              style: TextStyle(fontSize: 20, color: Colors.red),
-                            ),
-
-                      ButtonNormal(
-                        text: "Chơi lại",
-                        onPressed: () {
-                          SocketService.emit('request-playagain', {
-                            'idRoom': idRoom,
-                            'idUser': idUser,
-                          });
-                          if (isUserReady == 0) {
-                            setState(() {
-                              isYouReady = 1;
+                        ButtonNormal(
+                          text: "Chơi lại",
+                          onPressed: () {
+                            SocketService.emit('request-playagain', {
+                              'idRoom': idRoom,
+                              'idUser': idUser,
                             });
-                            isOverLay = false;
-                            Navigator.pop(context);
-                          } else {
-                            setState(() {
-                              startGame = "";
+                            if (isUserReady == 0) {
+                              setState(() {
+                                isYouReady = 1;
+                              });
                               isOverLay = false;
                               Navigator.pop(context);
+                            } else {
+                              setState(() {
+                                startGame = "";
+                                isOverLay = false;
+                                Navigator.pop(context);
+                              });
+                            }
+                          },
+                        ),
+                        ButtonNormal(
+                          text: "Rời khỏi phòng",
+                          onPressed: () {
+                            Navigator.pop(context);
+                            context.go('/');
+                            SocketService.emit('request-out-room', {
+                              'idRoom': idRoom,
+                              'idUser': idUser,
                             });
-                          }
-                        },
-                      ),
-                      ButtonNormal(
-                        text: "Rời khỏi phòng",
-                        onPressed: () {
-                          Navigator.pop(context);
-                          context.go('/');
-                          SocketService.emit('request-out-room', {
-                            'idRoom': idRoom,
-                            'idUser': idUser,
-                          });
-                        }, 
-                      ),
-                    ],
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 );
         },
@@ -701,4 +919,3 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
     });
   }
 }
-

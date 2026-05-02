@@ -6,7 +6,7 @@ export class UsersService {
   constructor(
     @Inject('POSTGRES_POOL')
     private readonly sql: Database,
-  ) { }
+  ) {}
 
   async createGuest() {
     const RandomId = Math.floor(1000 + Math.random() * 9000);
@@ -56,7 +56,7 @@ export class UsersService {
   }
 
   async deleteUser(id: string) {
-    const data = await this.sql`delete from users where id = ${id}`
+    const data = await this.sql`delete from users where id = ${id}`;
     return data[0] ?? null;
   }
 }
