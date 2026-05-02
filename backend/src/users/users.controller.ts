@@ -6,6 +6,7 @@ import {
   Delete,
   Put,
   Query,
+  Body,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 
@@ -61,8 +62,8 @@ export class UsersController {
   @Put('/update-user/:id')
   async updateUser(
     @Param('id') id: string,
-    @Query('username') username: string,
-    @Query('photoUrl') photoUrl: string,
+    @Body('username') username: string,
+    @Body('photoUrl') photoUrl: string,
   ) {
     await this.usersService.updateUser(id, username, photoUrl);
   }

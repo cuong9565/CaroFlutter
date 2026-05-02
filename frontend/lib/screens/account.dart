@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:frontend/core/providers/user_provider.dart';
+import 'package:frontend/core/services/b2_service.dart';
+import 'package:frontend/core/services/service.dart';
 import 'package:frontend/core/providers/login_with_email_provider.dart';
 import 'package:frontend/core/providers/login_with_google_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -26,6 +28,7 @@ class _AccountState extends ConsumerState<Account> {
   String? _avatarUrl;
   int _type = 0; // 0: Guest, 1: Email, 2: Google
   PlatformFile? _platformFile;
+  bool _isLoading = false; // Trạng thái loading để tránh dùng Navigator.pop lỗi
 
   @override
   void initState() {
@@ -38,18 +41,20 @@ class _AccountState extends ConsumerState<Account> {
       final data = await UserProvider.loadUser();
       final user = data['user'];
       if (user != null) {
-        setState(() {
-          _username = user['username'] ?? '';
-          userEdit.text = _username;
-          _email = user['email'] ?? '';
-          emailEdit.text = _email;
-          _totalWins = user['total_wins'] ?? 0;
-          _totalLosses = user['total_losses'] ?? 0;
-          _totalDraws = user['total_draws'] ?? 0;
-          _avatarUrl = user['avatar_url'] ?? '';
-          _type = user['type_login'] ?? 0;
-          _platformFile = null;
-        });
+        if (mounted) {
+          setState(() {
+            _username = user['username'] ?? '';
+            userEdit.text = _username;
+            _email = user['email'] ?? '';
+            emailEdit.text = _email;
+            _totalWins = user['total_wins'] ?? 0;
+            _totalLosses = user['total_losses'] ?? 0;
+            _totalDraws = user['total_draws'] ?? 0;
+            _avatarUrl = user['avatar_url'] ?? '';
+            _type = user['type_login'] ?? 0;
+            _platformFile = null;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -118,29 +123,50 @@ class _AccountState extends ConsumerState<Account> {
     String? uid = await FlutterSecureStorage().read(key: 'uid');
     
     if (uid != null) {
-      String finalPhotoUrl = _avatarUrl ?? '';
-      
-      if (_platformFile != null && _platformFile!.path != null) {
-        finalPhotoUrl = _platformFile!.path!;
-      }
+      setState(() => _isLoading = true);
 
-      await UserProvider.updateUser(uid, _username, finalPhotoUrl);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 10),
-                Text('Cập nhật tài khoản thành công!'),
-              ],
+      try {
+        String finalPhotoUrl = _avatarUrl ?? '';
+        
+        if (_platformFile != null && _platformFile!.bytes != null) {
+          String? uploadedUrl = await B2Service.uploadFile(
+            _platformFile!.bytes!, 
+            _platformFile!.name,
+          );
+          if (uploadedUrl != null) {
+            finalPhotoUrl = uploadedUrl;
+          }
+        }
+
+        await UserProvider.updateUser(uid, _username, finalPhotoUrl);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 10),
+                  Text('Cập nhật tài khoản thành công!'),
+                ],
+              ),
+              backgroundColor: Colors.green[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            backgroundColor: Colors.green[700],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+          );
+          _loadAccountData();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi khi cập nhật: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     }
   }
@@ -157,57 +183,86 @@ class _AccountState extends ConsumerState<Account> {
         _platformFile = result.files.first;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
+  }
+
+  String _getDisplayUrl(String? url) {
+    if (url == null || url.isEmpty || url.startsWith('blob:')) return '';
+    if (url.contains('backblazeb2.com') && !url.contains('/b2/file/')) {
+      try {
+        final uri = Uri.parse(url);
+        if (uri.pathSegments.isNotEmpty) {
+          final fileName = uri.pathSegments.last;
+          return "${Service.apiUrl}/b2/file/$fileName";
+        }
+        return url;
+      } catch (e) {
+        return url;
+      }
+    }
+    return url;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          bool isMobile = constraints.maxWidth < 600;
-          double horizontalPadding = isMobile ? 16 : (constraints.maxWidth - 500) / 2;
+      body: Stack(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              bool isMobile = constraints.maxWidth < 600;
+              double horizontalPadding = isMobile ? 16 : (constraints.maxWidth - 500) / 2;
 
-          return SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32),
-            child: Column(
-              children: [
-                // Thẻ nội dung chính
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey[200]!),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+              return SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.grey[200]!),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: 32),
-                      _buildAvatarSection(isMobile),
-                      const SizedBox(height: 32),
-                      _buildFormSection(),
-                      const SizedBox(height: 40),
-                      _buildActionButtons(),
-                    ],
-                  ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 32),
+                          _buildAvatarSection(isMobile),
+                          const SizedBox(height: 32),
+                          _buildFormSection(),
+                          const SizedBox(height: 40),
+                          _buildActionButtons(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildDangerZone(),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                _buildDangerZone(),
-              ],
+              );
+            },
+          ),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
             ),
-          );
-        },
+        ],
       ),
     );
   }
@@ -230,6 +285,8 @@ class _AccountState extends ConsumerState<Account> {
   }
 
   Widget _buildAvatarSection(bool isMobile) {
+    String displayUrl = _getDisplayUrl(_avatarUrl);
+    
     return Center(
       child: Column(
         children: [
@@ -249,10 +306,10 @@ class _AccountState extends ConsumerState<Account> {
                       backgroundColor: Colors.grey[100],
                       backgroundImage: _platformFile != null && _platformFile!.bytes != null
                           ? MemoryImage(_platformFile!.bytes!)
-                          : (_avatarUrl != null && _avatarUrl!.isNotEmpty
-                              ? NetworkImage(_avatarUrl!) as ImageProvider
+                          : (displayUrl.isNotEmpty
+                              ? NetworkImage(displayUrl) as ImageProvider
                               : null),
-                      child: (_platformFile == null && (_avatarUrl == null || _avatarUrl!.isEmpty))
+                      child: (_platformFile == null && displayUrl.isEmpty)
                           ? Icon(Icons.person, size: isMobile ? 50 : 60, color: Colors.grey[300])
                           : null,
                     ),

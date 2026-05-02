@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:frontend/core/services/service.dart';
 import 'package:http/http.dart' as http;
 
@@ -28,10 +29,12 @@ class UserService {
     String photoUrl,
   ) async {
     await http.put(
-      Service.getUri(
-        "/users/update-user/$uid?username=$username&photoUrl=$photoUrl",
-      ),
+      Service.getUri("/users/update-user/$uid"),
       headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "username": username,
+        "photoUrl": photoUrl,
+      }),
     );
   }
 

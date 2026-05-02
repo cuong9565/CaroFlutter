@@ -37,12 +37,22 @@ export class B2Service {
 
       const data = await this.getPresignedUrl(fileName);
       return {
-        data,
+        url: data,
+        fileName: fileName,
       };
     } catch (e) {
       console.log('UPLOAD ERROR:', e);
       throw e;
     }
+  }
+
+  async getFile(fileName: string) {
+    const command = new GetObjectCommand({
+      Bucket: process.env.B2_BUCKET,
+      Key: fileName,
+    });
+
+    return await this.s3.send(command);
   }
 
   async getPresignedUrl(fileName: string) {
