@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../core/models/user_model.dart';
 import '../../core/models/message_model.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -94,26 +93,14 @@ class MessageBubble extends StatelessWidget {
     return CircleAvatar(
       radius: 16,
       backgroundColor: Colors.grey[300],
-      child: message.sender.avartarUrl != null
-          ? ClipOval(
-              child: Image.network(
-                message.sender.avartarUrl!,
-                width: 32,
-                height: 32,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildDefaultAvatar();
-                },
-              ),
-            )
-          : _buildDefaultAvatar(),
+      child: _buildDefaultAvatar(),
     );
   }
 
   Widget _buildDefaultAvatar() {
     return Text(
-      message.sender.username.isNotEmpty
-          ? message.sender.username[0].toUpperCase()
+      message.senderUsername.isNotEmpty
+          ? message.senderUsername[0].toUpperCase()
           : '?',
       style: const TextStyle(
         fontSize: 14,
@@ -124,17 +111,22 @@ class MessageBubble extends StatelessWidget {
   }
 
   String _formatTime(DateTime time) {
+    final localTime = time.isUtc ? time.toLocal() : time;
     final now = DateTime.now();
-    final difference = now.difference(time);
+    final difference = now.difference(localTime);
+
+    if (difference.isNegative) {
+      return DateFormat('HH:mm').format(localTime);
+    }
 
     if (difference.inDays == 0) {
-      return DateFormat('HH:mm').format(time);
+      return DateFormat('HH:mm').format(localTime);
     } else if (difference.inDays == 1) {
-      return 'Hôm qua ${DateFormat('HH:mm').format(time)}';
+      return 'Hôm qua ${DateFormat('HH:mm').format(localTime)}';
     } else if (difference.inDays < 7) {
-      return DateFormat('EEE HH:mm', 'vi').format(time);
+      return DateFormat('EEE HH:mm').format(localTime);
     } else {
-      return DateFormat('dd/MM/yyyy').format(time);
+      return DateFormat('dd/MM/yyyy').format(localTime);
     }
   }
 }

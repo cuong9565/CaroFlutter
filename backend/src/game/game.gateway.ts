@@ -13,6 +13,7 @@ import { UsersService } from 'src/users/users.service';
 import type {
   DataSendOnOutRoom,
   MovePosition,
+  RequestOnMoveWithBot,
   RequestCreateRoomType,
   RequestOnMove,
   RequestStartGameType,
@@ -31,6 +32,10 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
   @WebSocketServer()
   server!: Server;
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   handleConnection(client: Socket) {
     console.log(client.id, 'Connected');
@@ -82,6 +87,39 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
         },
       });
     }
+  }
+
+  @SubscribeMessage('request-play-with-bot')
+  requestPlayWithBot(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: UserIdType,
+  ) {
+    const response = this.gameService.StartGameWithBot({
+      idUser: data.idUser,
+      socketUser: client,
+    });
+
+    client.emit('response-start-game-with-bot', response);
+  }
+
+  @SubscribeMessage('request-on-move-with-bot')
+  async requestOnMoveWithBot(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: RequestOnMoveWithBot,
+  ) {
+    const response = this.gameService.RequestOnMoveWithBot(data);
+
+    const isBotResponse =
+      response.state === 'OK' ||
+      (response.state === 'ENDGAME' &&
+        (response.result === 1 ||
+          (response.result === 2 && response.lastTurn !== undefined)));
+
+    if (isBotResponse) {
+      await this.delay(1000);
+    }
+
+    client.emit('response-on-move-with-bot', response);
   }
 
   @SubscribeMessage('on-move')

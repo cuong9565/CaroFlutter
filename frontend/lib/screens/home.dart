@@ -98,18 +98,21 @@ class _GameMode extends ConsumerState<GameMode> {
     (BuildContext context) {
       // Lắng nghe khi userNotifier thay đổi
       ref.listenManual(userNotifier, (previous, next) {
-        if (next.hasValue) {
-          SocketService.socket.emit('request-create-room', {
-            'idUser': next.value!['user']['id'],
-          });
-        }
+        final userId = _getUserId(next.value);
+        if (userId == null) return;
+        _ensureSocketReady(userId);
+        SocketService.emit('request-create-room', {
+          'idUser': userId,
+        });
       });
 
       // Khi widget được khởi tạo
       final current = ref.read(userNotifier);
-      if (current.hasValue) {
-        SocketService.socket.emit('request-create-room', {
-          'idUser': current.value!['user']['id'],
+      final userId = _getUserId(current.value);
+      if (userId != null) {
+        _ensureSocketReady(userId);
+        SocketService.emit('request-create-room', {
+          'idUser': userId,
         });
       }
 
@@ -122,7 +125,9 @@ class _GameMode extends ConsumerState<GameMode> {
         },
       );
     },
-    (BuildContext context) {},
+    (BuildContext context) {
+      context.go('/game-machine');
+    },
     (BuildContext context) {
       context.go('/game-online');
     },
@@ -154,21 +159,38 @@ class _GameMode extends ConsumerState<GameMode> {
     super.initState();
     // Lắng nghe khi userNotifier thay đổi
     ref.listenManual(userNotifier, (previous, next) {
-      if (next.hasValue) {
-        _initOnceSocket();
+      final userId = _getUserId(next.value);
+      if (userId != null) {
+        _initOnceSocket(userId);
       }
     });
 
     // Khi widget được khởi tạo
     final current = ref.read(userNotifier);
-    if (current.hasValue) {
-      _initOnceSocket();
+    final userId = _getUserId(current.value);
+    if (userId != null) {
+      _initOnceSocket(userId);
     }
   }
 
-  void _initOnceSocket() {
-    SocketService.socket.off('response-create-room');
-    SocketService.socket.once('response-create-room', (data) {
+  String? _getUserId(Map<String, dynamic>? userData) {
+    final user = userData?['user'];
+    final id = (user is Map) ? user['id'] : null;
+    final userId = id?.toString();
+    if (userId == null || userId.isEmpty) return null;
+    return userId;
+  }
+
+  void _ensureSocketReady(String userId) {
+    if (!SocketService.isInitialized) {
+      SocketService.init(userId);
+    }
+  }
+
+  void _initOnceSocket(String userId) {
+    _ensureSocketReady(userId);
+    SocketService.off('response-create-room');
+    SocketService.once('response-create-room', (data) {
       if (!mounted) return;
       final String idRoom = data['idRoom'];
       context.go('/play/$idRoom');

@@ -1,30 +1,94 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user_model.dart';
 import '../services/socket_service.dart';
 import '../models/conversation_model.dart';
 import '../models/message_model.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../services/service.dart';
+
 class ChatProvider with ChangeNotifier {
-  final SocketService _socketService = SocketService();
-  
+ 
+  final String _apiUrl = Service.apiUrl;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   List<Conversation> _conversations = [];
-  Map<String, List<Message>> _conversationMessages = {};
-  Map<String, bool> _typingStatus = {};
+  final Map<String, List<Message>> _conversationMessages = {};
+  final Map<String, bool> _typingStatus = {};
   bool _isConnected = false;
   String _currentUserId = '';
+  String _currentUsername = '';
+  bool _isInitialized = false;
 
   List<Conversation> get conversations => _conversations;
   bool get isConnected => _isConnected;
   String get currentUserId => _currentUserId;
+  String get currentUsername => _currentUsername;
+  bool get isInitialized => _isInitialized;
 
-  ChatProvider() { 
-    _setupSocketListeners();
+  ChatProvider() {
+    _initializeUser();
+  }
+
+  Future<void> _initializeUser() async {
+    try {
+      // Đọc userId từ FlutterSecureStorage
+      final uid = await _storage.read(key: 'uid');
+      print('ChatProvider: Read uid from storage: $uid');
+      if (uid != null && uid.isNotEmpty) {
+        _currentUserId = uid;
+        await _loadCurrentUser();
+        SocketService.init(_currentUserId);
+        _setupSocketListeners();
+        _isInitialized = true;
+        print('ChatProvider: Initialized with userId: $_currentUserId');
+        notifyListeners();
+      } else {
+        print('ChatProvider: No user ID found in storage');
+        _isInitialized = true; // Đánh dấu đã init xong dù không có userId
+        notifyListeners();
+      }
+    } catch (e) {
+      print('ChatProvider: Error initializing user: $e');
+      _isInitialized = true;
+      notifyListeners();
+    }
+  }
+
+  /// Gọi method này khi user đăng nhập mới để reinitialize với userId mới
+  Future<void> reinitialize() async {
+    // Disconnect socket cũ nếu có
+    if (_isInitialized) {
+      SocketService.disconnect();
+    }
+    
+    // Reset state
+    _conversations = [];
+    _conversationMessages.clear();
+    _typingStatus.clear();
+    _isConnected = false;
+    _currentUserId = '';
+    _currentUsername = '';
+    _isInitialized = false;
+    
+    // Khởi tạo lại với userId mới từ storage
+    await _initializeUser();
   }
 
   void _setupSocketListeners() {
-    _socketService.onMessageReceived = _handleNewMessage;
-    _socketService.onTyping = _handleTyping;
-    _socketService.onUserStatusChanged = _handleUserStatusChanged;
-    
+    // onNewMessage và onConversationHistory đã tự động clear listener cũ
+    SocketService.onNewMessage(_handleNewMessage);
+    SocketService.onConversationHistory(_handleConversationHistory);
+  }
+
+  /// Chờ cho đến khi userId được khởi tạo (tối đa 5 giây)
+  Future<void> _waitForInitialization() async {
+    int attempts = 0;
+    const maxAttempts = 50; // 50 * 100ms = 5 seconds
+    while (!_isInitialized && attempts < maxAttempts) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      attempts++;
+    }
   }
 
   void disconnect() {
@@ -43,20 +107,93 @@ class ChatProvider with ChangeNotifier {
     return _typingStatus[conversationId] ?? false;
   }
 
-  // Load conversations (mock data for now)
-  void loadConversations() {
-    // In a real app, this would fetch from an API
-    _conversations = _generateMockConversations();
-    notifyListeners();
+  Future<void> _loadCurrentUser() async {
+    try {
+      final response = await http.get(Uri.parse('$_apiUrl/users/get/$_currentUserId'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final user = UserModel.fromJson(data['user']);
+        _currentUsername = user.username;
+        print('Loaded current username: $_currentUsername');
+      } else {
+        print('Error loading current user: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error loading current user: $e');
+    }
   }
 
-  // Load messages for a conversation (mock data for now)
-  void loadMessages(String conversationId) {
-    if (!_conversationMessages.containsKey(conversationId)) {
-      _conversationMessages[conversationId] = _generateMockMessages(conversationId);
-      notifyListeners();
+  // Load conversations from server
+  Future<void> loadConversations() async {
+    // Đảm bảo userId đã được khởi tạo
+    if (_currentUserId.isEmpty) {
+      print('ChatProvider: Cannot load conversations - userId is empty. Waiting for initialization...');
+      // Chờ khởi tạo nếu chưa có userId
+      await _waitForInitialization();
+      if (_currentUserId.isEmpty) {
+        print('ChatProvider: Still no userId after waiting');
+        return;
+      }
     }
-    _socketService.joinConversation(conversationId);
+    
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiUrl/chat/conversations?userId=$_currentUserId'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final conversationsData = data['conversations'] as List;
+        print('Loaded ${data['count']} conversations from server');
+        final newConversations = conversationsData
+            .map((c) => Conversation.fromJson(c as Map<String, dynamic>))
+            .toList();
+        newConversations.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        print('Parsed ${newConversations.length} conversations');
+        // Populate messages cache
+        for (final conv in newConversations) {
+          final sortedMessages = conv.messages
+              .map((m) => Message.fromJson(m))
+              .toList()
+            ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          _conversationMessages[conv.id] = sortedMessages;
+        }
+        // Check for duplicates
+        final ids = newConversations.map((c) => c.id).toSet();
+        if (ids.length != newConversations.length) {
+          print('Warning: Duplicate conversation IDs detected!');
+          print('IDs: ${newConversations.map((c) => c.id).toList()}');
+        }
+        _conversations = newConversations;
+        notifyListeners();
+      } else {
+        print('Error loading conversations: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error loading conversations: $e');
+    }
+  }
+
+  // Load messages for a conversation from server
+  Future<void> loadMessages(String conversationId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiUrl/chat/conversations/$conversationId/messages'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        final sortedMessages = data
+            .map((m) => Message.fromJson(m as Map<String, dynamic>))
+            .toList()
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        _conversationMessages[conversationId] = sortedMessages;
+        notifyListeners();
+      } else {
+        print('Error loading messages: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error loading messages: $e');
+    }
+    SocketService.joinConversation(conversationId);
   }
 
   // Send a message
@@ -64,17 +201,7 @@ class ChatProvider with ChangeNotifier {
     final message = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       conversationId: conversationId,
-      sender: UserModel(
-        id: _currentUserId,
-        username: 'You',
-        typeLogin: 0,
-        avartarUrl: null,
-        rating: 0.0,
-        totalMatches: 0,
-        totalWins: 0,
-        totalDraws: 0,
-        totalLosses: 0,
-      ),
+      senderUsername: _currentUsername,
       content: content,
       timestamp: DateTime.now(),
       isSent: false,
@@ -89,25 +216,32 @@ class ChatProvider with ChangeNotifier {
     // Update conversation's last message
     final convIndex = _conversations.indexWhere((c) => c.id == conversationId);
     if (convIndex != -1) {
-      // Note: In a real app, you'd create a new Conversation object with updated lastMessage
+      final updatedConv = _conversations[convIndex].copyWith(
+        lastMessage: {
+          'content': content,
+          'sender': _currentUsername,
+          'timestamp': message.timestamp.toIso8601String(),
+        },
+        updatedAt: message.timestamp,
+      );
+      _conversations[convIndex] = updatedConv;
+      // Di chuyển conversation lên đầu danh sách
+      _conversations.removeAt(convIndex);
+      _conversations.insert(0, updatedConv);
     }
     
     notifyListeners();
-
-    // Send via socket
-    _socketService.sendMessage(message);
+    SocketService.sendMessage(conversationId, content, _currentUserId);
   }
 
-  // Handle typing indicator
+
   void setTyping(String conversationId, bool isTyping) {
-    _socketService.sendTyping(conversationId, _currentUserId, isTyping);
+    SocketService.sendTyping(conversationId, _currentUserId, isTyping);
   }
 
   // Mark message as read
   void markAsRead(String conversationId, String messageId) {
-    // _socketService.markAsRead(conversationId, messageId);
-    
-    // Update local message
+
     final messages = _conversationMessages[conversationId];
     if (messages != null) {
       final index = messages.indexWhere((m) => m.id == messageId);
@@ -119,118 +253,54 @@ class ChatProvider with ChangeNotifier {
   }
 
   void _handleNewMessage(Message message) {
-    // Add message to conversation
+    // Không thêm message của chính mình (đã được thêm local khi gửi)
+    if (message.senderUsername == _currentUsername) {
+      // Cập nhật message local với ID từ server nếu cần
+      final messages = _conversationMessages[message.conversationId];
+      if (messages != null) {
+        // Tìm message pending có cùng content và timestamp gần đúng
+        final pendingIndex = messages.indexWhere((m) => 
+          m.senderUsername == _currentUsername && 
+          m.content == message.content &&
+          !m.isSent
+        );
+        if (pendingIndex != -1) {
+          // Cập nhật với message từ server (có ID thực)
+          messages[pendingIndex] = message;
+          notifyListeners();
+        }
+      }
+      return;
+    }
+    
+    // Add message to conversation (chỉ với message từ người khác)
     if (!_conversationMessages.containsKey(message.conversationId)) {
       _conversationMessages[message.conversationId] = [];
     }
     _conversationMessages[message.conversationId]!.add(message);
-    
-    // Update conversation's last message and move to top
+    _conversationMessages[message.conversationId]!
+        .sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    // Cập nhật lastMessage và di chuyển conversation lên đầu
     final convIndex = _conversations.indexWhere((c) => c.id == message.conversationId);
     if (convIndex != -1) {
-      final conv = _conversations[convIndex];
+      final updatedConv = _conversations[convIndex].copyWith(
+        lastMessage: {
+          'content': message.content,
+          'sender': message.senderUsername,
+          'timestamp': message.timestamp.toIso8601String(),
+        },
+        updatedAt: message.timestamp,
+      );
       _conversations.removeAt(convIndex);
-      // Note: In a real app, create new Conversation with updated lastMessage
-      _conversations.insert(0, conv);
+      _conversations.insert(0, updatedConv);
     }
     
     notifyListeners();
   }
 
-  void _handleTyping(String conversationId, String userId) {
-    if (userId != _currentUserId) {
-      _typingStatus[conversationId] = true;
-      notifyListeners();
-      
-      // Clear typing status after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        _typingStatus[conversationId] = false;
-        notifyListeners();
-      });
-    }
-  }
-
-  void _handleUserStatusChanged(String userId, bool isOnline) {
-    // Update user status in conversations
-    for (var conv in _conversations) {
-      for (var participant in conv.participants) {
-        if (participant.id == userId) {
-          // Note: In a real app, you'd update the User object
-          notifyListeners();
-          break;
-        }
-      }
-    }
-  }
-
-  // Mock data generators
-  List<Conversation> _generateMockConversations() {
-    return [
-      Conversation(
-        id: '1',
-        participants: [
-          UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0.0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-          UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: true),
-        ],
-        lastMessage: Message(
-          id: '1',
-          conversationId: '1',
-          sender: UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-          content: 'Chào bạn! Chơi cờ caro không?',
-          timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-        ),
-        unreadCount: 2,
-        updatedAt: DateTime.now().subtract(const Duration(minutes: 5)),
-      ),
-      Conversation(
-        id: '2',
-        participants: [
-          UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-          UserModel(id: '3', username: 'Trần Thị B', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: false),
-        ],
-        lastMessage: Message(
-          id: '2',
-          conversationId: '2',
-          sender: UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-          content: 'Ok, hẹn gặp lại!',
-          timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
-        unreadCount: 0,
-        updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-    ];
-  }
-
-  List<Message> _generateMockMessages(String conversationId) {
-    final otherUser = UserModel(id: '2', username: 'Nguyễn Văn A', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0, isOnline: true);
-    final now = DateTime.now();
-    
-    return [
-      Message(
-        id: '1',
-        conversationId: conversationId,
-        sender: otherUser,
-        content: 'Chào bạn!',
-        timestamp: now.subtract(const Duration(minutes: 10)),
-        isRead: true,
-      ),
-      Message(
-        id: '2',
-        conversationId: conversationId,
-        sender: UserModel(id: _currentUserId, username: 'You', typeLogin: 0, avartarUrl: null, rating: 0, totalMatches: 0, totalWins: 0, totalDraws: 0, totalLosses: 0),
-        content: 'Chào! Bạn khỏe không?',
-        timestamp: now.subtract(const Duration(minutes: 9)),
-        isRead: true,
-      ),
-      Message(
-        id: '3',
-        conversationId: conversationId,
-        sender: otherUser,
-        content: 'Mình khỏe. Chơi cờ caro không?',
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        isRead: false,
-      ),
-    ];
+  void _handleConversationHistory(List<Message> messages) {
+  
   }
 
   @override

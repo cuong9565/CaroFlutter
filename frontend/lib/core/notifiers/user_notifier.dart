@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:frontend/core/providers/user_provider.dart';
@@ -10,7 +11,7 @@ final userNotifier =
     );
 
 class UserNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>?>> {
-  UserNotifier() : super(const AsyncValue.data(null)) {
+  UserNotifier() : super(const AsyncValue.loading()) {
     loadUser();
   }
 
@@ -21,6 +22,8 @@ class UserNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>?>> {
       final data = await UserProvider.loadUser();
       state = AsyncValue.data(data);
     } catch (e, st) {
+      debugPrint('UserNotifier.loadUser failed: $e');
+      debugPrint('$st');
       state = AsyncValue.error(e, st);
     }
   }

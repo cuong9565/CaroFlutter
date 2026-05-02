@@ -1,10 +1,8 @@
-import 'user_model.dart';
-import 'message_model.dart';
-
 class Conversation {
   final String id;
-  final List<UserModel> participants;
-  final Message? lastMessage;
+  final List<String> participants;
+  final Map<String, dynamic>? lastMessage;
+  final List<Map<String, dynamic>> messages;
   final int unreadCount;
   final DateTime updatedAt;
 
@@ -12,49 +10,94 @@ class Conversation {
     required this.id,
     required this.participants,
     this.lastMessage,
+    required this.messages,
     this.unreadCount = 0,
     required this.updatedAt,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
+    final rawLastMessage = json['lastMessage'];
+    final parsedLastMessage = rawLastMessage is Map
+        ? Map<String, dynamic>.from(rawLastMessage)
+        : null;
+
     return Conversation(
       id: json['id'] ?? '',
       participants: (json['participants'] as List<dynamic>?)
-              ?.map((p) => UserModel.fromJson(p))
+              ?.map((p) => p as String)
               .toList() ??
           [],
-      lastMessage: json['lastMessage'] != null
-          ? Message.fromJson(json['lastMessage'])
-          : null,
+      lastMessage: parsedLastMessage,
+      messages: (json['messages'] as List<dynamic>?)
+              ?.map((m) => m as Map<String, dynamic>)
+              .toList() ??
+          [],
       unreadCount: json['unreadCount'] ?? 0,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : DateTime.now(),
+      updatedAt: _resolveUpdatedAt(json, parsedLastMessage),
     );
+  }
+
+  static DateTime _resolveUpdatedAt(
+    Map<String, dynamic> json,
+    Map<String, dynamic>? lastMessage,
+  ) {
+    final rawUpdatedAt =
+        json['updatedAt'] ?? json['updateAt'] ?? lastMessage?['timestamp'];
+    return _parseDateTime(rawUpdatedAt);
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is DateTime) {
+      return value.toLocal();
+    }
+
+    if (value is String && value.isNotEmpty) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) {
+        return parsed.toLocal();
+      }
+    }
+
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value).toLocal();
+    }
+
+    return DateTime.now().toLocal();
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'participants': participants.map((p) => p.toJson()).toList(),
-      'lastMessage': lastMessage?.toJson(),
+      'participants': participants,
+      'lastMessage': lastMessage,
+      'messages': messages,
       'unreadCount': unreadCount,
       'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
-  String getOtherUserName(String currentUserId) {
-    final otherUser = participants.firstWhere(
-      (user) => user.id != currentUserId,
-      orElse: () => participants.first,
+  String getOtherUser(String currentUsername) {
+    return participants.firstWhere(
+      (p) => p != currentUsername,
+      orElse: () => 'Unknown',
     );
-    return otherUser.username;
   }
 
-  UserModel? getOtherUser(String currentUserId) {
-    return participants.firstWhere(
-      (user) => user.id != currentUserId,
-      orElse: () => participants.first,
+  Conversation copyWith({
+    String? id,
+    List<String>? participants,
+    Map<String, dynamic>? lastMessage,
+    List<Map<String, dynamic>>? messages,
+    int? unreadCount,
+    DateTime? updatedAt,
+  }) {
+    return Conversation(
+      id: id ?? this.id,
+      participants: participants ?? this.participants,
+      lastMessage: lastMessage ?? this.lastMessage,
+      messages: messages ?? this.messages,
+      unreadCount: unreadCount ?? this.unreadCount,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

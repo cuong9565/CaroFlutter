@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../core/providers/chat_provider.dart';
-import '../core/models/user_model.dart';
 import '../core/models/conversation_model.dart';
 import 'chat_detail.dart';
 
@@ -16,13 +15,16 @@ class Chat extends StatefulWidget {
 class _ChatState extends State<Chat> {
   Conversation? _selectedConversation;
   bool _isSearching = false;
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   @override
   void initState() {
     super.initState();
-    // Load conversations when screen opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      // Nếu chưa có userId, reinitialize để đọc lại từ storage
+      if (chatProvider.currentUserId.isEmpty) {
+        await chatProvider.reinitialize();
+      }
       chatProvider.loadConversations();
     });
   }
@@ -168,9 +170,10 @@ class _ChatState extends State<Chat> {
     ChatProvider chatProvider,
     bool isWide,
   ) {
-    final otherUser = conversation.getOtherUser(chatProvider.currentUserId);
+    final otherUser = conversation.getOtherUser(chatProvider.currentUsername);
     final hasUnread = conversation.unreadCount > 0;
     final isSelected = _selectedConversation?.id == conversation.id;
+    final lastMessageContent = conversation.lastMessage?['content'] ?? '';
 
     return InkWell(
       onTap: () {
@@ -203,34 +206,8 @@ class _ChatState extends State<Chat> {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: Colors.grey[300],
-                  child: otherUser?.avartarUrl != null
-                      ? ClipOval(
-                          child: Image.network(
-                            otherUser!.avartarUrl!,
-                            width: 56,
-                            height: 56,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildDefaultAvatar(otherUser.username);
-                            },
-                          ),
-                        )
-                      : _buildDefaultAvatar(otherUser?.username ?? '?'),
+                  child: _buildDefaultAvatar(otherUser),
                 ),
-                if (otherUser?.isOnline ?? false)
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(width: 12),
@@ -244,7 +221,7 @@ class _ChatState extends State<Chat> {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation.getOtherUserName(chatProvider.currentUserId),
+                          otherUser,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
@@ -269,7 +246,7 @@ class _ChatState extends State<Chat> {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation.lastMessage?.content ?? '',
+                          lastMessageContent,
                           style: TextStyle(
                             fontSize: 14,
                             color: hasUnread ? const Color.fromARGB(221, 59, 13, 13) : Colors.grey[600],
@@ -364,16 +341,22 @@ class _ChatState extends State<Chat> {
   }
 
   String _formatTime(DateTime time) {
+    final localTime = time.isUtc ? time.toLocal() : time;
     final now = DateTime.now();
-    final difference = now.difference(time);
+    final difference = now.difference(localTime);
+
+    if (difference.isNegative) {
+      return DateFormat('HH:mm').format(localTime);
+    }
+
     if (difference.inDays == 0) {
-      return DateFormat('HH:mm').format(time);
+      return DateFormat('HH:mm').format(localTime);
     } else if (difference.inDays == 1) {
       return 'Hôm qua';
     } else if (difference.inDays < 7) {
-      return DateFormat('EEE', 'vi').format(time);
+      return DateFormat('EEE').format(localTime);
     } else {
-      return DateFormat('dd/MM').format(time);
+      return DateFormat('dd/MM').format(localTime);
     }
   }
-    } 
+}

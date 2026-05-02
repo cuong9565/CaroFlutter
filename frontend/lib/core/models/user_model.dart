@@ -28,12 +28,12 @@ class UserModel {
       id: json['id'],
       username: json['username'],
       typeLogin: json['type_login'],
-      avartarUrl: json['avartar_url'],
-      rating: json['rating']?.toDouble(),
-      totalMatches: json['total_matches'],
-      totalWins: json['total_wins'],
-      totalDraws: json['total_draws'],
-      totalLosses: json['total_losses'],
+      avartarUrl: json['avatar_url'],
+      rating: double.tryParse(json['rating']?.toString() ?? '0.0') ?? 0.0,
+      totalMatches: json['total_matches'] ?? 0,
+      totalWins: json['total_wins'] ?? 0,
+      totalDraws: json['total_draws'] ?? 0,
+      totalLosses: json['total_losses'] ?? 0,
       isOnline: json['online'] ?? false,
     );
   }

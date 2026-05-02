@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/Project/CaroFlutter/frontend/linux"
+    "cmake.sourceDirectory": "D:/Project/CaroFlutter/frontend/linux",
+    "cmake.ignoreCMakeListsMissing": true
 }

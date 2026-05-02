@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:frontend/core/notifiers/user_notifier.dart';
 import 'package:frontend/widgets/buttons/button.dart';
@@ -10,6 +12,7 @@ import 'package:frontend/widgets/router.dart';
 import 'package:frontend/widgets/switch/switch.dart';
 import 'package:frontend/widgets/switch/switch_volumn_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
@@ -139,7 +142,19 @@ class _MainLayout extends ConsumerState<Mainlayout> {
             );
           },
           loading: () => Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text("ERROR")),
+          error: (e, st) {
+            if (kDebugMode) {
+              debugPrint('Mainlayout user init error: $e');
+              debugPrint('$st');
+            }
+
+            return Center(
+              child: Text(
+                kDebugMode ? 'ERROR: $e' : 'ERROR',
+                textAlign: TextAlign.center,
+              ),
+            );
+          },
         );
   }
 
@@ -242,8 +257,21 @@ void _showPopOverUser(BuildContext btnContext) {
     () {
       Navigator.of(btnContext).pop();
     },
-    () {},
-    () {},
+    () {
+      btnContext.go("/login");
+    },
+    () async {
+      (!kIsWeb)
+          ? {
+              await FlutterSecureStorage().delete(key: 'uid'),
+              btnContext.go('/'),
+            }
+          : {
+              await FlutterSecureStorage().delete(key: 'uid'),
+              GoogleSignIn.instance.disconnect(),
+              btnContext.go('/'),
+            };
+    },
   ];
   final List<IconData> iconDatas = [
     FontAwesomeIcons.arrowRightToBracket,
