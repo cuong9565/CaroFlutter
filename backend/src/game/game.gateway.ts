@@ -107,7 +107,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() data: RequestOnMoveWithBot,
   ) {
-    const response = this.gameService.RequestOnMoveWithBot(data);
+    const response = await this.gameService.RequestOnMoveWithBot(data);
 
     const isBotResponse =
       response.state === 'OK' ||
@@ -224,6 +224,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           username: user1Profile?.username,
           avatarUrl: user1Profile?.avatar_url,
         },
+        you: {
+          id: user0Profile?.id,
+          username: user0Profile?.username,
+          avatarUrl: user0Profile?.avatar_url,
+        },
         turnDurationMs: this.gameService.getTurnTimeLimitMs(),
         turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
         boardSize: request.match?.boards?.length,
@@ -244,6 +249,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           id: user0Profile?.id,
           username: user0Profile?.username,
           avatarUrl: user0Profile?.avatar_url,
+        },
+        you: {
+          id: user1Profile?.id,
+          username: user1Profile?.username,
+          avatarUrl: user1Profile?.avatar_url,
         },
         turnDurationMs: this.gameService.getTurnTimeLimitMs(),
         turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
@@ -275,6 +285,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
             username: user1Profile?.username,
             avatarUrl: user1Profile?.avatar_url,
           },
+          you: {
+            id: user0Profile?.id,
+            username: user0Profile?.username,
+            avatarUrl: user0Profile?.avatar_url,
+          },
           turnDurationMs: this.gameService.getTurnTimeLimitMs(),
           turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
           boardSize: request.match?.boards?.length,
@@ -304,6 +319,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
             username: user0Profile?.username,
             avatarUrl: user0Profile?.avatar_url,
           },
+          you: {
+            id: user1Profile?.id,
+            username: user1Profile?.username,
+            avatarUrl: user1Profile?.avatar_url,
+          },
           turnDurationMs: this.gameService.getTurnTimeLimitMs(),
           turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
           boardSize: request.match?.boards?.length,
@@ -314,8 +334,8 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('request-on-move')
-  requestOnMove(@MessageBody() data: RequestOnMove) {
-    const resPonseData = this.gameService.RequestOnMove(data);
+  async requestOnMove(@MessageBody() data: RequestOnMove) {
+    const resPonseData = await this.gameService.RequestOnMove(data);
     if (resPonseData.state === 'OK') {
       resPonseData.socketUser!.emit('response-on-move', {
         x: resPonseData.x,
@@ -344,8 +364,8 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('request-out-room')
-  requestOutRoom(@MessageBody() data: RequestStartGameType) {
-    const response = this.gameService.RequestOutRoom(data);
+  async requestOutRoom(@MessageBody() data: RequestStartGameType) {
+    const response = await this.gameService.RequestOutRoom(data);
     for (let i = 0; i < response.users.length; i++) {
       response?.users[i]?.emit('response-out-room');
     }
@@ -376,6 +396,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           username: user1Profile?.username,
           avatarUrl: user1Profile?.avatar_url,
         },
+        you: {
+          id: user0Profile?.id,
+          username: user0Profile?.username,
+          avatarUrl: user0Profile?.avatar_url,
+        },
         turnDurationMs: this.gameService.getTurnTimeLimitMs(),
         turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
         boardSize: request.match?.boards?.length,
@@ -396,6 +421,11 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           id: user0Profile?.id,
           username: user0Profile?.username,
           avatarUrl: user0Profile?.avatar_url,
+        },
+        you: {
+          id: user1Profile?.id,
+          username: user1Profile?.username,
+          avatarUrl: user1Profile?.avatar_url,
         },
         turnDurationMs: this.gameService.getTurnTimeLimitMs(),
         turnDeadlineMs: request.match?.turnTimeoutExpiresAt,

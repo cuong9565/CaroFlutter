@@ -29,17 +29,19 @@ CREATE TABLE "login_by_gg" (
 );
 CREATE TABLE "match" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"id_matches_player" uuid NOT NULL,
-	"state_userrequest" varchar(255),
-	"time_create" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "match_state_userrequest_check" CHECK (((state_userrequest)::text = ANY ((ARRAY['LOOSE'::character varying, 'DRAW'::character varying, 'WIN'::character varying])::text[])))
+	"id_matches_player" uuid NOT NULL REFERENCES "matches_player"("id"),
+	"winner_id" uuid REFERENCES "users"("id"), -- NULL if draw or ongoing
+	"is_draw" boolean DEFAULT false,
+	"time_create" timestamp with time zone DEFAULT now() NOT NULL
 );
 CREATE TABLE "matches_player" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"iduser_request" uuid NOT NULL,
 	"iduser_response" uuid,
 	"is_ranking" boolean NOT NULL,
-	"time_create" timestamp DEFAULT now() NOT NULL
+	"game_mode" varchar(255) DEFAULT 'FRIEND' NOT NULL,
+	"time_create" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "matches_player_game_mode_check" CHECK (((game_mode)::text = ANY ((ARRAY['FRIEND'::character varying, 'AI'::character varying, 'ONLINE'::character varying])::text[])))
 );
 CREATE TABLE "messages" (
 	"id" serial PRIMARY KEY,

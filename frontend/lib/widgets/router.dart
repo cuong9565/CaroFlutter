@@ -6,6 +6,7 @@ import 'package:frontend/screens/game_online.dart';
 import 'package:frontend/screens/game.dart';
 import 'package:frontend/screens/game_machine.dart';
 import 'package:frontend/screens/history.dart';
+import 'package:frontend/screens/history_detail.dart';
 import 'package:frontend/screens/home.dart';
 import 'package:frontend/screens/login.dart';
 import 'package:frontend/screens/signin.dart';
@@ -52,6 +53,15 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/signin',
       builder: (_, _) => const SafeArea(child: Scaffold(body: Signin())),
+    ),
+    GoRoute(
+      path: '/history/:roomId',
+      builder: (context, state) {
+        final roomId = state.pathParameters['roomId']!;
+        return SafeArea(
+          child: HistoryDetail(roomId: roomId),
+        );
+      },
     ),
     GoRoute(
       path: '/play/:idRoom',

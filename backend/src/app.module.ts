@@ -11,6 +11,7 @@ import { MatchModule } from './match/match.module';
 import { GmailModule } from './login/gmail/gmail.module';
 import { EmailModule } from './login/email/email.module';
 import { ChatModule } from './chat/chat.module';
+import { HistoryModule } from './history/history.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ChatModule } from './chat/chat.module';
     GmailModule,
     EmailModule,
     ChatModule,
+    HistoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

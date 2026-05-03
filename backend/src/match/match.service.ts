@@ -18,10 +18,10 @@ export class MatchService {
     return data[0] as MatchType;
   }
 
-  async updateStateMatch(id: string, state: string) {
+  async updateMatchResult(id: string, winnerId: string | null, isDraw: boolean = false) {
     await this.sql`
       update match
-      set state_userrequest = ${state}
+      set winner_id = ${winnerId}, is_draw = ${isDraw}
       where id = ${id}
     `;
   }

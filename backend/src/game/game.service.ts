@@ -27,6 +27,7 @@ import {
 } from './game.type';
 import { MatchesPlayerService } from 'src/matches_player/matches_player.service';
 import { MatchService } from 'src/match/match.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class GameService {
@@ -46,6 +47,7 @@ export class GameService {
     private readonly sql: Database,
     private readonly matchesPlayerService: MatchesPlayerService,
     private readonly matchService: MatchService,
+    private readonly usersService: UsersService,
   ) { }
 
   getTurnTimeLimitMs(): number {
@@ -114,6 +116,7 @@ export class GameService {
       matches.firstUser.idUser,
       matches.secondUser.idUser,
       true,
+      'ONLINE',
     );
 
     const boardSize = await this.getBoardSize();
@@ -313,6 +316,7 @@ export class GameService {
     const room = await this.matchesPlayerService.createMatchesPlayerOnlyUser1(
       idUser,
       false,
+      'FRIEND',
     );
 
     this.Rooms[room.id] = {
@@ -406,7 +410,7 @@ export class GameService {
     }
   }
 
-  RequestOnMove(data: RequestOnMove): ResponseOnMovePosition {
+  async RequestOnMove(data: RequestOnMove): Promise<ResponseOnMovePosition> {
     const idRoom = data.idRoom;
     const idUser = data.idUser;
     const x = data.x;
@@ -432,6 +436,12 @@ export class GameService {
 
     // Lấy trận đấu hiện tại
     const currentMatch = this.Rooms[idRoom].match.at(-1)!;
+
+    if (currentMatch.stateGame !== -1) {
+      return {
+        state: 'ERROR',
+      };
+    }
 
     // Check valid user
     const turn = currentMatch.userTurn;
@@ -571,8 +581,19 @@ export class GameService {
       // Update match table in database
       const currMatch = this.Rooms[idRoom].match.at(-1)!;
       const idMatchUpdate = currMatch.id;
-      const stateMatch = currMatch.userTurn === 0 ? 'WIN' : 'LOOSE';
-      this.matchService.updateStateMatch(idMatchUpdate, stateMatch);
+      const user0Id = this.Rooms[idRoom].user[0].idUser;
+      const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
+      const winnerId = currMatch.userTurn === 0 ? user0Id : user1Id;
+      this.matchService.updateMatchResult(idMatchUpdate, winnerId, false);
+
+      // Update user stats
+      if (currMatch.userTurn === 0) {
+        this.usersService.updateUserStats(user0Id, 'WIN');
+        this.usersService.updateUserStats(user1Id, 'LOOSE');
+      } else {
+        this.usersService.updateUserStats(user0Id, 'LOOSE');
+        this.usersService.updateUserStats(user1Id, 'WIN');
+      }
 
       return {
         state: 'ENDGAME',
@@ -610,7 +631,13 @@ export class GameService {
 
       // Update match table in database
       const currMatch = this.Rooms[idRoom].match.at(-1)!;
-      this.matchService.updateStateMatch(currMatch.id, 'DRAW');
+      this.matchService.updateMatchResult(currMatch.id, null, true);
+
+      // Update user stats
+      const user0Id = this.Rooms[idRoom].user[0].idUser;
+      const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
+      this.usersService.updateUserStats(user0Id, 'DRAW');
+      this.usersService.updateUserStats(user1Id, 'DRAW');
 
       return {
         state: 'ENDGAME',
@@ -656,12 +683,15 @@ export class GameService {
     };
   }
 
-  StartGameWithBot(data: RequestPlayWithBotType): ResponseStartGameWithBotType {
-    const idRoom =
-      'bot-' +
-      Date.now().toString(36) +
-      '-' +
-      Math.random().toString(36).slice(2, 8);
+  async StartGameWithBot(data: RequestPlayWithBotType): Promise<ResponseStartGameWithBotType> {
+    const roomDB = await this.matchesPlayerService.createMatchesPlayerOnlyUser1(
+      data.idUser,
+      false,
+      'AI',
+    );
+    const idRoom = roomDB.id;
+
+    const matchDB = await this.matchService.createMatch(idRoom);
 
     this.BotRooms[idRoom] = {
       user: {
@@ -674,6 +704,7 @@ export class GameService {
       userTurn: 0,
       userX: 0,
       stateGame: -1,
+      idMatchDB: matchDB.id,
     };
 
     return {
@@ -685,7 +716,7 @@ export class GameService {
     };
   }
 
-  RequestOnMoveWithBot(data: RequestOnMoveWithBot): ResponseOnMoveWithBotType {
+  async RequestOnMoveWithBot(data: RequestOnMoveWithBot): Promise<ResponseOnMoveWithBotType> {
     const room = this.BotRooms[data.idRoom];
     if (!room || room.user.idUser !== data.idUser || room.stateGame !== -1) {
       return {
@@ -714,6 +745,10 @@ export class GameService {
     room.board[data.x][data.y] = 0;
     if (this.IsWinningMove(room.board, data.x, data.y, 0)) {
       room.stateGame = 0;
+      if (room.idMatchDB) {
+        this.matchService.updateMatchResult(room.idMatchDB, room.user.idUser, false);
+        this.usersService.updateUserStats(room.user.idUser, 'WIN');
+      }
       return {
         state: 'ENDGAME',
         result: 0,
@@ -726,6 +761,10 @@ export class GameService {
 
     if (this.IsBoardFull(room.board)) {
       room.stateGame = 2;
+      if (room.idMatchDB) {
+        this.matchService.updateMatchResult(room.idMatchDB, null, true);
+        this.usersService.updateUserStats(room.user.idUser, 'DRAW');
+      }
       return {
         state: 'ENDGAME',
         result: 2,
@@ -738,6 +777,10 @@ export class GameService {
 
     if (this.IsWinningMove(room.board, botMove.x, botMove.y, 1)) {
       room.stateGame = 1;
+      if (room.idMatchDB) {
+        this.matchService.updateMatchResult(room.idMatchDB, null, false); // Bot wins, so winner_id = null
+        this.usersService.updateUserStats(room.user.idUser, 'LOOSE');
+      }
       return {
         state: 'ENDGAME',
         result: 1,
@@ -750,6 +793,10 @@ export class GameService {
 
     if (this.IsBoardFull(room.board)) {
       room.stateGame = 2;
+      if (room.idMatchDB) {
+        this.matchService.updateMatchResult(room.idMatchDB, null, true);
+        this.usersService.updateUserStats(room.user.idUser, 'DRAW');
+      }
       return {
         state: 'ENDGAME',
         result: 2,
@@ -956,7 +1003,7 @@ export class GameService {
     return true;
   }
 
-  RequestOutRoom(data: RequestStartGameType) {
+  async RequestOutRoom(data: RequestStartGameType) {
     const idUser = data.idUser;
     const idRoom = data.idRoom;
 
@@ -994,34 +1041,42 @@ export class GameService {
         // Không phải người out room
         if (this.Rooms[idRoom].user[0].idUser !== idUser) {
           // Trận đáu chưa kết thúc thì 0 thắng
-          if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1)
+          if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1) {
+            const currMatch = this.Rooms[idRoom].match.at(-1)!;
+            const idMatchUpdate = currMatch.id;
             this.Rooms[idRoom].match.at(-1)!.stateGame = 0;
+            const user0Id = this.Rooms[idRoom].user[0].idUser;
+            const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
+            this.usersService.updateUserStats(user0Id, 'WIN');
+            this.usersService.updateUserStats(user1Id, 'LOOSE');
+
+            // Update match table in database
+            this.matchService.updateMatchResult(idMatchUpdate, user0Id, false);
+          }
+
           const socketUser = this.Rooms[idRoom].user[0].socketUser;
-
-          // Update match table in database
-          const currMatch = this.Rooms[idRoom].match.at(-1)!;
-          const idMatchUpdate = currMatch.id;
-          const stateMatch = 'WIN';
-          this.matchService.updateStateMatch(idMatchUpdate, stateMatch);
-
           // Xóa phòng chơi
           delete this.Rooms[idRoom];
-
           return {
             users: [socketUser],
           };
         } else {
           // Trận đáu chưa kết thúc thì 1 thắng
-          if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1)
+          if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1) {
+            const currMatch = this.Rooms[idRoom].match.at(-1)!;
+            const idMatchUpdate = currMatch.id;
             this.Rooms[idRoom].match.at(-1)!.stateGame = 1;
-          const socketUser = this.Rooms[idRoom].user[1].socketUser;
+            const user0Id = this.Rooms[idRoom].user[0].idUser;
+            const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
 
-          // Update match table in database
-          const currMatch = this.Rooms[idRoom].match.at(-1)!;
-          const idMatchUpdate = currMatch.id;
-          const stateMatch = 'LOOSE';
-          this.matchService.updateStateMatch(idMatchUpdate, stateMatch);
+            this.usersService.updateUserStats(user0Id, 'LOOSE');
+            this.usersService.updateUserStats(user1Id, 'WIN');
 
+            // Update match table in database
+            this.matchService.updateMatchResult(idMatchUpdate, user1Id, false);
+          }
+
+          const socketUser = this.Rooms[idRoom].user[1]!.socketUser;
           // Xóa phòng chơi
           delete this.Rooms[idRoom];
           return {
@@ -1170,7 +1225,7 @@ export class GameService {
     };
   }
 
-  private handleTurnTimeout(idRoom: string, match: MatchType) {
+  private async handleTurnTimeout(idRoom: string, match: MatchType) {
     if (match.stateGame !== -1) return;
 
     const room = this.Rooms[idRoom];
@@ -1189,8 +1244,14 @@ export class GameService {
     room.ratio[loser].loose++;
 
     // Update DB
-    const stateMatch = winner === 0 ? 'WIN' : 'LOOSE';
-    this.matchService.updateStateMatch(match.id, stateMatch);
+    const winnerId = room.user[winner].idUser;
+    this.matchService.updateMatchResult(match.id, winnerId, false);
+
+    // Update user stats
+    const userWinnerId = room.user[winner].idUser;
+    const userLoserId = room.user[loser]!.idUser!;
+    this.usersService.updateUserStats(userWinnerId, 'WIN');
+    this.usersService.updateUserStats(userLoserId, 'LOOSE');
 
     // Emit kết quả về client
     const socketWinner = room.user[winner].socketUser;

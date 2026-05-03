@@ -7,7 +7,7 @@ class Service {
   static final String apiUrl = dotenv.env['API_URL'] ?? '';
 
   // _handleResponse
-  static Map<String, dynamic> handleResponse(http.Response response) {
+  static dynamic handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
     } else {

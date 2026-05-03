@@ -13,10 +13,11 @@ export class MatchesPlayerService {
     idUser1: string,
     idUser2: string,
     is_ranking: boolean,
+    game_mode: 'FRIEND' | 'AI' | 'ONLINE' = 'FRIEND',
   ): Promise<MatchesPlayerType> {
     const data = await this.sql`
-      insert into matches_player(iduser_request, iduser_response, is_ranking)
-      values(${idUser1}, ${idUser2}, ${is_ranking})
+      insert into matches_player(iduser_request, iduser_response, is_ranking, game_mode)
+      values(${idUser1}, ${idUser2}, ${is_ranking}, ${game_mode})
       returning *
     `;
     return data[0] as MatchesPlayerType;
@@ -25,10 +26,11 @@ export class MatchesPlayerService {
   async createMatchesPlayerOnlyUser1(
     idUser1: string,
     is_ranking: boolean,
+    game_mode: 'FRIEND' | 'AI' | 'ONLINE' = 'FRIEND',
   ): Promise<MatchesPlayerType> {
     const data = await this.sql`
-      insert into matches_player(iduser_request, is_ranking)
-      values(${idUser1}, ${is_ranking})
+      insert into matches_player(iduser_request, is_ranking, game_mode)
+      values(${idUser1}, ${is_ranking}, ${game_mode})
       returning *
     `;
     return data[0] as MatchesPlayerType;

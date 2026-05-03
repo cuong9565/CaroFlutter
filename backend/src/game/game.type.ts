@@ -239,6 +239,7 @@ export type BotRoomsType = {
     userTurn: 0 | 1; // 0: user, 1: bot
     userX: 0 | 1; // 0: user is X, 1: user is O
     stateGame: number; // -1: playing, 0: user win, 1: user lose, 2: draw
+    idMatchDB?: string;
   };
 };
 

@@ -57,6 +57,28 @@ export class UsersService {
     `;
   }
 
+  async updateUserStats(id: string, result: 'WIN' | 'LOOSE' | 'DRAW') {
+    if (result === 'WIN') {
+      await this.sql`
+        update users
+        set total_matches = total_matches + 1, total_wins = total_wins + 1
+        where id = ${id}
+      `;
+    } else if (result === 'LOOSE') {
+      await this.sql`
+        update users
+        set total_matches = total_matches + 1, total_losses = total_losses + 1
+        where id = ${id}
+      `;
+    } else if (result === 'DRAW') {
+      await this.sql`
+        update users
+        set total_matches = total_matches + 1, total_draws = total_draws + 1
+        where id = ${id}
+      `;
+    }
+  }
+
   async deleteUser(id: string) {
     const data = await this.sql`delete from users where id = ${id}`;
     return data[0] ?? null;
