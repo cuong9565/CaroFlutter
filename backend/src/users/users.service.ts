@@ -6,7 +6,7 @@ export class UsersService {
   constructor(
     @Inject('POSTGRES_POOL')
     private readonly sql: Database,
-  ) {}
+  ) { }
 
   async createGuest() {
     const RandomId = Math.floor(1000 + Math.random() * 9000);

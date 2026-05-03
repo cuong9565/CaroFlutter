@@ -46,7 +46,7 @@ export class GameService {
     private readonly sql: Database,
     private readonly matchesPlayerService: MatchesPlayerService,
     private readonly matchService: MatchService,
-  ) {}
+  ) { }
 
   getTurnTimeLimitMs(): number {
     return this.TIME_LIMIT;

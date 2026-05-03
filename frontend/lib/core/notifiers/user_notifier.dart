@@ -22,8 +22,6 @@ class UserNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>?>> {
       final data = await UserProvider.loadUser();
       state = AsyncValue.data(data);
     } catch (e, st) {
-      debugPrint('UserNotifier.loadUser failed: $e');
-      debugPrint('$st');
       state = AsyncValue.error(e, st);
     }
   }
