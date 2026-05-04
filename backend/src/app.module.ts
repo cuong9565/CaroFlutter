@@ -12,6 +12,7 @@ import { GmailModule } from './login/gmail/gmail.module';
 import { EmailModule } from './login/email/email.module';
 import { ChatModule } from './chat/chat.module';
 import { HistoryModule } from './history/history.module';
+import { FriendModule } from './friends/friends.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { HistoryModule } from './history/history.module';
     EmailModule,
     ChatModule,
     HistoryModule,
+    FriendModule,
   ],
   controllers: [AppController],
   providers: [AppService],
