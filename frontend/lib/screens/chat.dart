@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../core/providers/chat_provider.dart';
 import '../core/models/conversation_model.dart';
 import 'chat_detail.dart';
@@ -16,6 +17,7 @@ class _ChatState extends State<Chat> {
   Conversation? _selectedConversation;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
+  bool _didHandleDeepLink = false;
   @override
   void initState() {
     super.initState();
@@ -25,8 +27,43 @@ class _ChatState extends State<Chat> {
       if (chatProvider.currentUserId.isEmpty) {
         await chatProvider.reinitialize();
       }
-      chatProvider.loadConversations();
+      await chatProvider.loadConversations();
+      await _handleDeepLink(chatProvider);
     });
+  }
+
+  Future<void> _handleDeepLink(ChatProvider chatProvider) async {
+    if (_didHandleDeepLink) {
+      return;
+    }
+    final extra = GoRouterState.of(context).extra;
+    if (extra is Map) {
+      final targetUserId = extra['targetUserId']?.toString();
+      final targetUsername = extra['targetUsername']?.toString();
+      if (targetUserId != null && targetUserId.isNotEmpty) {
+        final conversation = await chatProvider.openConversationWithUser(
+          targetUserId,
+          targetUsername ?? 'Khong ro',
+        );
+        if (!mounted) {
+          return;
+        }
+        final isWide = MediaQuery.of(context).size.width > 700;
+        if (isWide) {
+          setState(() {
+            _selectedConversation = conversation;
+          });
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatDetail(conversation: conversation),
+            ),
+          );
+        }
+      }
+    }
+    _didHandleDeepLink = true;
   }
 
               

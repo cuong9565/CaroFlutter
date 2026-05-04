@@ -15,7 +15,11 @@ import 'package:frontend/widgets/layout/my_error.dart';
 import 'package:frontend/widgets/main_layout.dart';
 import 'package:go_router/go_router.dart';
 
+final GlobalKey<NavigatorState> rootNavigatorKey =
+    GlobalKey<NavigatorState>();
+
 final GoRouter router = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   errorBuilder: (context, state) =>
       SafeArea(child: Scaffold(body: MyErrorPageURL())),

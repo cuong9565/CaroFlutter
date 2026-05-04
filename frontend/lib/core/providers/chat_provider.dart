@@ -40,6 +40,7 @@ class ChatProvider with ChangeNotifier {
         await _loadCurrentUser();
         SocketService.init(_currentUserId);
         _setupSocketListeners();
+        _isConnected = SocketService.socket?.connected ?? false;
         _isInitialized = true;
         print('ChatProvider: Initialized with userId: $_currentUserId');
         notifyListeners();
@@ -79,6 +80,22 @@ class ChatProvider with ChangeNotifier {
     // onNewMessage và onConversationHistory đã tự động clear listener cũ
     SocketService.onNewMessage(_handleNewMessage);
     SocketService.onConversationHistory(_handleConversationHistory);
+    SocketService.onConnect((_) {
+      _isConnected = true;
+      notifyListeners();
+    });
+    SocketService.onDisconnect((_) {
+      _isConnected = false;
+      notifyListeners();
+    });
+    SocketService.onConnectError((_) {
+      _isConnected = false;
+      notifyListeners();
+    });
+    SocketService.onError((_) {
+      _isConnected = false;
+      notifyListeners();
+    });
   }
 
   /// Chờ cho đến khi userId được khởi tạo (tối đa 5 giây)
@@ -231,7 +248,112 @@ class ChatProvider with ChangeNotifier {
     }
     
     notifyListeners();
-    SocketService.sendMessage(conversationId, content, _currentUserId);
+    SocketService.sendMessage(
+      conversationId,
+      content,
+      _currentUserId,
+      timestamp: message.timestamp,
+    );
+  }
+
+  Future<Conversation> openConversationWithUser(
+    String targetUserId,
+    String targetUsername,
+  ) async {
+    if (_currentUserId.isEmpty) {
+      await _waitForInitialization();
+    }
+    if (_currentUserId.isEmpty) {
+      throw Exception('Missing user id');
+    }
+
+    if (!SocketService.isInitialized) {
+      SocketService.init(_currentUserId);
+      _setupSocketListeners();
+    }
+
+    final conversationId = await _createConversationWithUser(targetUserId);
+    Conversation? conversation;
+    for (final item in _conversations) {
+      if (item.id == conversationId) {
+        conversation = item;
+        break;
+      }
+    }
+
+    if (conversation == null) {
+      conversation = Conversation(
+        id: conversationId,
+        participants: [_currentUsername, targetUsername],
+        lastMessage: null,
+        messages: [],
+        updatedAt: DateTime.now(),
+      );
+      _conversations.insert(0, conversation);
+    }
+
+    await loadMessages(conversationId);
+    notifyListeners();
+    return conversation;
+  }
+
+  Future<String> sendMessageToUser(
+    String targetUserId,
+    String targetUsername,
+    String content,
+  ) async {
+    if (_currentUserId.isEmpty) {
+      await _waitForInitialization();
+    }
+    if (_currentUserId.isEmpty) {
+      throw Exception('Missing user id');
+    }
+
+    if (!SocketService.isInitialized) {
+      SocketService.init(_currentUserId);
+      _setupSocketListeners();
+    }
+
+    final conversationId = await _createConversationWithUser(targetUserId);
+
+    if (!_conversations.any((c) => c.id == conversationId)) {
+      final newConversation = Conversation(
+        id: conversationId,
+        participants: [_currentUsername, targetUsername],
+        lastMessage: null,
+        messages: [],
+        updatedAt: DateTime.now(),
+      );
+      _conversations.insert(0, newConversation);
+    }
+
+    if (!_conversationMessages.containsKey(conversationId)) {
+      _conversationMessages[conversationId] = [];
+    }
+
+    sendMessage(conversationId, content);
+    return conversationId;
+  }
+
+  Future<String> _createConversationWithUser(String targetUserId) async {
+    final response = await http.post(
+      Uri.parse('$_apiUrl/chat/conversations'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'participants': [_currentUserId, targetUserId],
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Tao cuoc tro chuyen that bai');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final id = data['id']?.toString();
+    if (id == null || id.isEmpty) {
+      throw Exception('Khong lay duoc id cuoc tro chuyen');
+    }
+    return id;
   }
 
 

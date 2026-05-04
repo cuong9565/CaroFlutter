@@ -35,13 +35,13 @@ class _LoginState extends State<Login> {
               children: [
                 ListTile(
                   title: Text(
-                    "Login",
+                    "Đăng nhập",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 30, color: Colors.red),
                   ),
                 ),
                 Text(
-                  "Username",
+                  "Tên đăng nhập",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 Padding(
@@ -52,13 +52,13 @@ class _LoginState extends State<Login> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10.0),
                       ),
-                      hintText: 'Username',
+                      hintText: 'Tên đăng nhập',
                       contentPadding: EdgeInsets.all(10.0),
                     ),
                   ),
                 ),
                 Text(
-                  "Password",
+                  "Mật khẩu",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 Padding(
@@ -72,7 +72,7 @@ class _LoginState extends State<Login> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10.0),
                       ),
-                      hintText: 'Password',
+                      hintText: 'Mật khẩu',
                       contentPadding: EdgeInsets.all(10.0),
                       suffixIcon: IconButton(
                         onPressed: () => setState(() {
@@ -89,10 +89,10 @@ class _LoginState extends State<Login> {
                   padding: EdgeInsetsGeometry.fromLTRB(10.0, 0.0, 10.0, 0.0),
                   child: Row(
                     children: [
-                      Text("You don't have any account please sign up: "),
+                      Text("Bạn chưa có tài khoản? Đăng ký tại đây: "),
                       InkWell(
                         child: Text(
-                          "Click here",
+                          "Bấm vào đây",
                           style: TextStyle(color: Colors.blue),
                         ),
                         onTap: () => context.go("/signin"),
@@ -101,7 +101,7 @@ class _LoginState extends State<Login> {
                   ),
                 ),
                 ElevatedButton(
-                  child: Text("Submit"),
+                  child: Text("Đăng nhập"),
                   onPressed: () {
                     check();
                   },
@@ -127,8 +127,8 @@ class _LoginState extends State<Login> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text("Alert"),
-          content: Text("Username not null"),
+          title: Text("Thông báo"),
+          content: Text("Tên đăng nhập không được để trống!"),
           actions: <Widget>[
             TextButton(
               onPressed: () {
@@ -145,8 +145,8 @@ class _LoginState extends State<Login> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text("Alert"),
-          content: Text("Password not null"),
+          title: Text("Thông báo"),
+          content: Text("Mật khẩu không được để trống!"),
           actions: <Widget>[
             TextButton(
               onPressed: () {
@@ -175,8 +175,8 @@ class _LoginState extends State<Login> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text("Alert"),
-            content: Text("Welcome"),
+            title: Text("Thông báo"),
+            content: Text("Chào mừng"),
             actions: <Widget>[
               TextButton(
                 onPressed: () {
@@ -201,8 +201,8 @@ class _LoginState extends State<Login> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: Text("Alert"),
-              content: Text("Login failed"),
+              title: Text("Thông báo"),
+              content: Text("Đăng nhập thất bại"),
               actions: <Widget>[
                 TextButton(
                   onPressed: () {
@@ -218,8 +218,8 @@ class _LoginState extends State<Login> {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text("Alert"),
-            content: Text("Incorrect password"),
+            title: Text("Thông báo"),
+            content: Text("Mật khẩu không đúng"),
             actions: <Widget>[
               TextButton(
                 onPressed: () {
@@ -235,8 +235,8 @@ class _LoginState extends State<Login> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text("Alert"),
-          content: Text("User not found"),
+          title: Text("Thông báo"),
+          content: Text("Không tìm thấy người dùng"),
           actions: <Widget>[
             TextButton(
               onPressed: () {

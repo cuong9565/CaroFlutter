@@ -79,11 +79,45 @@ class SocketService {
     _socket?.off(event, callback);
   }
 
-  static void sendMessage(String conversationId, String content, String senderId) {
+  static void onConnect(Function(dynamic) callback) {
+    _socket?.onConnect(callback);
+  }
+
+  static void onDisconnect(Function(dynamic) callback) {
+    _socket?.onDisconnect(callback);
+  }
+
+  static void onConnectError(Function(dynamic) callback) {
+    _socket?.onConnectError(callback);
+  }
+
+  static void onError(Function(dynamic) callback) {
+    _socket?.onError(callback);
+  }
+
+  static String _formatTimestamp(DateTime value) {
+    final local = value.toLocal();
+    final year = local.year.toString().padLeft(4, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    final second = local.second.toString().padLeft(2, '0');
+    final micro = local.microsecond.toString().padLeft(6, '0');
+    return '$year-$month-$day $hour:$minute:$second.$micro';
+  }
+
+  static void sendMessage(
+    String conversationId,
+    String content,
+    String senderId, {
+    DateTime? timestamp,
+  }) {
     emit('send_message', {
       'conversationId': conversationId,
       'content': content,
       'senderId': senderId,
+      'timestamp': _formatTimestamp(timestamp ?? DateTime.now()),
     });
   }
 

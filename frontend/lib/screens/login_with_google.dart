@@ -96,7 +96,7 @@ class _SignInTestState extends State<SignInTest> {
   @override
   Widget build(BuildContext context) {
     return (!kIsWeb)
-        ? ElevatedButton(onPressed: _signIn, child: Text('Sign in with Google'))
+        ? ElevatedButton(onPressed: _signIn, child: Text('Đăng nhập bằng Google'))
         : renderButton(
             configuration: GSIButtonConfiguration(
               type: GSIButtonType.standard,

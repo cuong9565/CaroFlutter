@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:frontend/core/providers/challenge_provider.dart';
 import 'package:frontend/core/providers/user_provider.dart';
 import 'package:frontend/core/services/friend_service.dart';
+import 'package:frontend/core/providers/chat_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class Friends extends StatefulWidget {
   const Friends({super.key});
@@ -17,6 +21,7 @@ class _FriendsState extends State<Friends> {
   List<Map<String, dynamic>> _friendRequests = [];
   List<Map<String, dynamic>> _friends = [];
   String? _currentUserId;
+  String? _currentUsername;
 
   @override
   void initState() {
@@ -35,6 +40,7 @@ class _FriendsState extends State<Friends> {
       final data = await UserProvider.loadUser();
       final user = data['user'];
       final userId = (user is Map) ? user['id']?.toString() : null;
+      final username = (user is Map) ? user['username']?.toString() : null;
 
       if (userId == null || userId.isEmpty) {
         throw Exception('Missing user id');
@@ -60,7 +66,9 @@ class _FriendsState extends State<Friends> {
         _isLoading = false;
         _loadError = null;
         _currentUserId = userId;
+        _currentUsername = username;
       });
+
     } catch (error) {
       if (!mounted) {
         return;
@@ -86,6 +94,58 @@ class _FriendsState extends State<Friends> {
     return userId;
   }
 
+  Future<void> _challengeFriend(Map<String, dynamic> friend) async {
+    try {
+      final targetId = friend['friend_id']?.toString();
+      if (targetId == null || targetId.isEmpty) {
+        throw Exception('Không tìm thấy id bạn bè');
+      }
+      final challengeProvider =
+          Provider.of<ChallengeProvider>(context, listen: false);
+      await challengeProvider.sendChallenge(targetId);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Loi: ${error.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _openChatWithFriend(Map<String, dynamic> friend) async {
+    try {
+      final targetId = friend['friend_id']?.toString();
+      final targetName = friend['username']?.toString() ?? 'Không rõ';
+      if (targetId == null || targetId.isEmpty) {
+        throw Exception('Không tìm thấy id bạn bè');
+      }
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      if (chatProvider.currentUserId.isEmpty) {
+        await chatProvider.reinitialize();
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      context.go(
+        '/chat',
+        extra: {
+          'targetUserId': targetId,
+          'targetUsername': targetName,
+        },
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: ${error.toString()}')),
+      );
+    }
+  }
+
   Future<void> _acceptRequest(String friendRecordId) async {
     try {
       final userId = await _getCurrentUserId();
@@ -96,7 +156,7 @@ class _FriendsState extends State<Friends> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Loi: ${error.toString()}')),
+        SnackBar(content: Text('Lỗi: ${error.toString()}')),
       );
     }
   }
@@ -128,13 +188,13 @@ class _FriendsState extends State<Friends> {
     final uuid = _uuidController.text.trim();
     if (uuid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui long nhap UUID.')),
+        const SnackBar(content: Text('Vui lòng nhập UUID.')),
       );
       return;
     }
     if (!_isUuidLike(uuid)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dinh dang UUID khong hop le.')),
+        const SnackBar(content: Text('Định dạng UUID không hợp lệ.')),
       );
       return;
     }
@@ -310,7 +370,7 @@ class _FriendsState extends State<Friends> {
             Row(
               children: [
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _challengeFriend(friend),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10.0),
@@ -324,7 +384,7 @@ class _FriendsState extends State<Friends> {
                   padding: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
                 ),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _openChatWithFriend(friend),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10.0),
@@ -430,7 +490,7 @@ class _FriendsState extends State<Friends> {
                         child: TextField(
                           controller: _uuidController,
                           decoration: InputDecoration(
-                            hintText: 'Nhap UUID',
+                            hintText: 'Nhập UUID',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10.0),
                             ),
@@ -520,7 +580,7 @@ class _FriendsState extends State<Friends> {
                       if (_friendRequests.isEmpty)
                         Padding(
                           padding: EdgeInsets.all(10.0),
-                          child: Text('Khong co loi moi cho'),
+                          child: Text('Không có lời mời chờ'),
                         )
                       else
                         Column(

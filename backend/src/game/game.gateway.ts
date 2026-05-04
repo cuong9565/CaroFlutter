@@ -33,18 +33,137 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
+  private onlineUsers = new Map<string, Socket>();
+  private pendingChallenges = new Map<
+    string,
+    { requesterId: string; targetId: string }
+  >();
+
   private async delay(ms: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   handleConnection(client: Socket) {
     console.log(client.id, 'Connected');
+    const userId = client.handshake?.auth?.userId;
+    if (typeof userId === 'string' && userId.trim().length > 0) {
+      this.onlineUsers.set(userId, client);
+    }
   }
 
   handleDisconnect(client: Socket) {
     console.log(client.id, 'Disconnected');
     this.gameService.OutRoom(client);
+    const userId = client.handshake?.auth?.userId;
+    if (typeof userId === 'string' && userId.trim().length > 0) {
+      this.onlineUsers.delete(userId);
+    }
     // Xóa user
+  }
+
+  @SubscribeMessage('challenge-request')
+  async handleChallengeRequest(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { requesterId: string; targetId: string },
+  ) {
+    const requesterId = data?.requesterId;
+    const targetId = data?.targetId;
+    if (!requesterId || !targetId || requesterId == targetId) {
+      client.emit('challenge-error', {
+        message: 'Thong tin thach dau khong hop le',
+      });
+      return;
+    }
+
+    const targetSocket = this.onlineUsers.get(targetId);
+    if (!targetSocket) {
+      client.emit('challenge-error', {
+        message: 'Nguoi choi khong online',
+      });
+      return;
+    }
+
+    const request = await this.gameService.RequestCreateRoom({
+      idUser: requesterId,
+      socketUser: client,
+    });
+
+    if (!request.idRoom) {
+      client.emit('challenge-error', {
+        message: 'Khong tao duoc phong',
+      });
+      return;
+    }
+
+    this.pendingChallenges.set(request.idRoom, {
+      requesterId,
+      targetId,
+    });
+
+    const requester = await this.usersService.getUser(requesterId);
+
+    targetSocket.emit('challenge-received', {
+      roomId: request.idRoom,
+      requesterId,
+      requesterName: requester?.username,
+    });
+
+    client.emit('challenge-requested', {
+      roomId: request.idRoom,
+      targetId,
+    });
+  }
+
+  @SubscribeMessage('challenge-accept')
+  async handleChallengeAccept(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string },
+  ) {
+    const roomId = data?.roomId;
+    if (!roomId || !this.pendingChallenges.has(roomId)) {
+      client.emit('challenge-error', {
+        message: 'Loi moi thach dau khong ton tai',
+      });
+      return;
+    }
+
+    const pending = this.pendingChallenges.get(roomId)!;
+    const requesterSocket = this.onlineUsers.get(pending.requesterId);
+    if (!requesterSocket) {
+      client.emit('challenge-error', {
+        message: 'Nguoi gui thach dau da offline',
+      });
+      this.pendingChallenges.delete(roomId);
+      return;
+    }
+
+    requesterSocket.emit('challenge-start', { roomId });
+    client.emit('challenge-start', { roomId });
+    this.pendingChallenges.delete(roomId);
+  }
+
+  @SubscribeMessage('challenge-reject')
+  async handleChallengeReject(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string },
+  ) {
+    const roomId = data?.roomId;
+    if (!roomId || !this.pendingChallenges.has(roomId)) {
+      client.emit('challenge-error', {
+        message: 'Loi moi thach dau khong ton tai',
+      });
+      return;
+    }
+
+    const pending = this.pendingChallenges.get(roomId)!;
+    const requesterSocket = this.onlineUsers.get(pending.requesterId);
+    if (requesterSocket) {
+      requesterSocket.emit('challenge-rejected', {
+        roomId,
+        targetId: pending.targetId,
+      });
+    }
+    this.pendingChallenges.delete(roomId);
   }
 
   @SubscribeMessage('out-room')
