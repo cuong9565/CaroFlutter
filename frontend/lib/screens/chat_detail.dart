@@ -370,7 +370,7 @@ class _ChatDetailState extends State<ChatDetail> {
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: Colors.grey[400]!.withOpacity(0.5 + (value * 0.5)),
+            color: Colors.grey[400]!.withValues(alpha: 0.5 + (value * 0.5)),
             shape: BoxShape.circle,
           ),
         );

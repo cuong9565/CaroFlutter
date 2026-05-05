@@ -60,15 +60,13 @@ class _FriendsState extends State<Friends> {
         _friendRequests = requests is List
             ? List<Map<String, dynamic>>.from(requests)
             : [];
-        _friends = friends is List
-            ? List<Map<String, dynamic>>.from(friends)
-            : [];
+        _friends =
+            friends is List ? List<Map<String, dynamic>>.from(friends) : [];
         _isLoading = false;
         _loadError = null;
         _currentUserId = userId;
         _currentUsername = username;
       });
-
     } catch (error) {
       if (!mounted) {
         return;
@@ -296,6 +294,9 @@ class _FriendsState extends State<Friends> {
   }
 
   Widget _buildRequestItem(Map<String, dynamic> request) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final actionSize = isMobile ? 36.0 : 40.0;
+    final actionWidth = isMobile ? 44.0 : 50.0;
     final username = request['username']?.toString() ?? 'Khong ro';
     final friendRecordId = request['friend_record_id']?.toString();
     return Padding(
@@ -309,30 +310,41 @@ class _FriendsState extends State<Friends> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: _buildAvatar(username),
-                ),
-                Padding(
-                  padding: EdgeInsetsGeometry.all(10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        username,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text('Lời mời kết bạn'),
-                    ],
+            Expanded(
+              child: Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.all(10.0),
+                    child: _buildAvatar(username),
                   ),
-                ),
-              ],
+                  Flexible(
+                    child: Padding(
+                      padding: EdgeInsetsGeometry.all(10.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            username,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Lời mời kết bạn',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Row(
+            Wrap(
+              spacing: isMobile ? 6.0 : 10.0,
               children: [
                 ElevatedButton(
                   onPressed: friendRecordId == null
@@ -344,11 +356,13 @@ class _FriendsState extends State<Friends> {
                     ),
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 8.0 : 10.0,
+                      vertical: isMobile ? 8.0 : 10.0,
+                    ),
+                    fixedSize: Size(actionWidth, actionSize),
                   ),
-                  child: Icon(FontAwesomeIcons.check),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
+                  child: Icon(FontAwesomeIcons.check, size: 16),
                 ),
                 ElevatedButton(
                   onPressed: friendRecordId == null
@@ -360,11 +374,13 @@ class _FriendsState extends State<Friends> {
                     ),
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 8.0 : 10.0,
+                      vertical: isMobile ? 8.0 : 10.0,
+                    ),
+                    fixedSize: Size(actionWidth, actionSize),
                   ),
-                  child: Icon(FontAwesomeIcons.x),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(0.0, 0.0, 10.0, 0.0),
+                  child: Icon(FontAwesomeIcons.x, size: 16),
                 ),
               ],
             ),
@@ -375,6 +391,9 @@ class _FriendsState extends State<Friends> {
   }
 
   Widget _buildFriendItem(Map<String, dynamic> friend) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final actionSize = isMobile ? 36.0 : 40.0;
+    final actionWidth = isMobile ? 44.0 : 110.0;
     final username = friend['username']?.toString() ?? 'Khong ro';
     final wins = friend['total_wins']?.toString() ?? '0';
     final losses = friend['total_losses']?.toString() ?? '0';
@@ -391,34 +410,45 @@ class _FriendsState extends State<Friends> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Stack(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: _buildAvatar(username),
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: EdgeInsetsGeometry.all(10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: Row(
+                children: [
+                  Stack(
                     children: [
-                      Text(
-                        username,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: _buildAvatar(username),
                       ),
-                      Text('${wins}W / ${losses}L / ${draws}D'),
                     ],
                   ),
-                ),
-              ],
+                  Flexible(
+                    child: Padding(
+                      padding: EdgeInsetsGeometry.all(10.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            username,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${wins}W / ${losses}L / ${draws}D',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Row(
+            Wrap(
+              spacing: isMobile ? 6.0 : 10.0,
               children: [
                 ElevatedButton(
                   onPressed: () => _challengeFriend(friend),
@@ -428,11 +458,15 @@ class _FriendsState extends State<Friends> {
                     ),
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 8.0 : 10.0,
+                      vertical: isMobile ? 8.0 : 10.0,
+                    ),
+                    fixedSize: Size(actionWidth, actionSize),
                   ),
-                  child: Text('Thách đấu'),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
+                  child: isMobile
+                      ? const Icon(Icons.sports_esports, size: 18)
+                      : const Text('Thách đấu'),
                 ),
                 ElevatedButton(
                   onPressed: () => _openChatWithFriend(friend),
@@ -442,11 +476,13 @@ class _FriendsState extends State<Friends> {
                     ),
                     backgroundColor: Colors.grey,
                     foregroundColor: Colors.black,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 8.0 : 10.0,
+                      vertical: isMobile ? 8.0 : 10.0,
+                    ),
+                    fixedSize: Size(actionWidth, actionSize),
                   ),
-                  child: Icon(FontAwesomeIcons.comment),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
+                  child: Icon(FontAwesomeIcons.comment, size: 16),
                 ),
                 ElevatedButton(
                   onPressed: () {},
@@ -456,14 +492,22 @@ class _FriendsState extends State<Friends> {
                     ),
                     backgroundColor: Colors.grey,
                     foregroundColor: Colors.black,
-                    fixedSize: Size(100, 25),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 8.0 : 10.0,
+                      vertical: isMobile ? 8.0 : 10.0,
+                    ),
+                    fixedSize: Size(actionWidth, actionSize),
                   ),
                   child: PopupMenuButton<int>(
+                    padding: EdgeInsets.zero,
                     onSelected: (value) {
                       if (value == 0 && friendRecordId != null) {
                         _confirmRemoveFriend(friendRecordId, username);
                       }
                     },
+                    icon: isMobile
+                        ? const Icon(Icons.more_vert, size: 18)
+                        : const Icon(Icons.more_horiz, size: 18),
                     itemBuilder: (BuildContext context) =>
                         <PopupMenuEntry<int>>[
                       PopupMenuItem(
@@ -483,36 +527,8 @@ class _FriendsState extends State<Friends> {
                           ],
                         ),
                       ),
-                      // PopupMenuItem(
-                      //   value: 1,
-                      //   child: Row(
-                      //     children: [
-                      //       Icon(
-                      //         FontAwesomeIcons.ban,
-                      //         color: Colors.red,
-                      //       ),
-                      //       Padding(
-                      //         padding: EdgeInsets.fromLTRB(
-                      //           10.0,
-                      //           0.0,
-                      //           10.0,
-                      //           0.0,
-                      //         ),
-                      //       ),
-                      //       Text(
-                      //         'Chan',
-                      //         style: TextStyle(
-                      //           color: Colors.red,
-                      //         ),
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ),
                     ],
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(0.0, 0.0, 10.0, 0.0),
                 ),
               ],
             ),
