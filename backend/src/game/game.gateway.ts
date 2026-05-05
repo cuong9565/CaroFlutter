@@ -128,6 +128,15 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const pending = this.pendingChallenges.get(roomId)!;
+    const targetSocket = this.onlineUsers.get(pending.targetId);
+    if (!targetSocket || targetSocket.id !== client.id) {
+      client.emit('challenge-error', {
+        message: 'Người nhận thách đấu đã offline',
+      });
+      this.pendingChallenges.delete(roomId);
+      return;
+    }
+
     const requesterSocket = this.onlineUsers.get(pending.requesterId);
     if (!requesterSocket) {
       client.emit('challenge-error', {

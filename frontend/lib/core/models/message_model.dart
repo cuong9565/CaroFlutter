@@ -1,6 +1,7 @@
 class Message {
   final String id;
   final String conversationId;
+  final String senderId;
   final String senderUsername;
   final String content;
   final DateTime timestamp;
@@ -10,6 +11,7 @@ class Message {
   Message({
     required this.id,
     required this.conversationId,
+    required this.senderId,
     required this.senderUsername,
     required this.content,
     required this.timestamp,
@@ -21,6 +23,7 @@ class Message {
     return Message(
       id: json['id'] ?? '',
       conversationId: json['conversationId'] ?? '',
+      senderId: json['senderId']?.toString() ?? '',
       senderUsername: _parseSenderUsername(json['sender']),
       content: json['content'] ?? '',
       timestamp: _parseTimestamp(json['timestamp']),
@@ -64,6 +67,7 @@ class Message {
     return {
       'id': id,
       'conversationId': conversationId,
+      'senderId': senderId,
       'sender': senderUsername,
       'content': content,
       'timestamp': timestamp.toIso8601String(),
@@ -75,6 +79,7 @@ class Message {
   Message copyWith({
     String? id,
     String? conversationId,
+    String? senderId,
     String? senderUsername,
     String? content,
     DateTime? timestamp,
@@ -84,6 +89,7 @@ class Message {
     return Message(
       id: id ?? this.id,
       conversationId: conversationId ?? this.conversationId,
+      senderId: senderId ?? this.senderId,
       senderUsername: senderUsername ?? this.senderUsername,
       content: content ?? this.content,
       timestamp: timestamp ?? this.timestamp,

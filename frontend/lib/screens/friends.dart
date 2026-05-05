@@ -176,6 +176,56 @@ class _FriendsState extends State<Friends> {
     }
   }
 
+  Future<void> _removeFriend(String friendRecordId) async {
+    try {
+      final userId = await _getCurrentUserId();
+      await FriendService.removeFriend(friendRecordId, userId);
+      await _loadFriendsData();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Loi: ${error.toString()}')),
+      );
+    }
+  }
+
+  Future<void> _confirmRemoveFriend(
+    String friendRecordId,
+    String username,
+  ) async {
+    final shouldRemove = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xác nhận hủy kết bạn'),
+        content: Text('Bạn có chắc chắn muốn hủy kết bạn với $username không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Đồng ý'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (shouldRemove == true) {
+      await _removeFriend(friendRecordId);
+    }
+  }
+
   bool _isUuidLike(String value) {
     final trimmed = value.trim();
     final uuidLike = RegExp(
@@ -213,7 +263,7 @@ class _FriendsState extends State<Friends> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Da gui loi moi den $uuid')),
+        SnackBar(content: Text('Đã gửi lời mời đến $uuid')),
       );
     } catch (error) {
       if (!mounted) {
@@ -276,7 +326,7 @@ class _FriendsState extends State<Friends> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text('Loi moi ket ban'),
+                      Text('Lời mời kết bạn'),
                     ],
                   ),
                 ),
@@ -329,6 +379,7 @@ class _FriendsState extends State<Friends> {
     final wins = friend['total_wins']?.toString() ?? '0';
     final losses = friend['total_losses']?.toString() ?? '0';
     final draws = friend['total_draws']?.toString() ?? '0';
+    final friendRecordId = friend['friend_record_id']?.toString();
     return Padding(
       padding: EdgeInsets.all(10.0),
       child: Container(
@@ -408,9 +459,15 @@ class _FriendsState extends State<Friends> {
                     fixedSize: Size(100, 25),
                   ),
                   child: PopupMenuButton<int>(
+                    onSelected: (value) {
+                      if (value == 0 && friendRecordId != null) {
+                        _confirmRemoveFriend(friendRecordId, username);
+                      }
+                    },
                     itemBuilder: (BuildContext context) =>
                         <PopupMenuEntry<int>>[
                       PopupMenuItem(
+                        value: 0,
                         child: Row(
                           children: [
                             Icon(FontAwesomeIcons.userXmark),
@@ -422,34 +479,35 @@ class _FriendsState extends State<Friends> {
                                 0.0,
                               ),
                             ),
-                            Text('Huy ket ban'),
+                            Text('Hủy kết bạn'),
                           ],
                         ),
                       ),
-                      PopupMenuItem(
-                        child: Row(
-                          children: [
-                            Icon(
-                              FontAwesomeIcons.ban,
-                              color: Colors.red,
-                            ),
-                            Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                10.0,
-                                0.0,
-                                10.0,
-                                0.0,
-                              ),
-                            ),
-                            Text(
-                              'Chan',
-                              style: TextStyle(
-                                color: Colors.red,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // PopupMenuItem(
+                      //   value: 1,
+                      //   child: Row(
+                      //     children: [
+                      //       Icon(
+                      //         FontAwesomeIcons.ban,
+                      //         color: Colors.red,
+                      //       ),
+                      //       Padding(
+                      //         padding: EdgeInsets.fromLTRB(
+                      //           10.0,
+                      //           0.0,
+                      //           10.0,
+                      //           0.0,
+                      //         ),
+                      //       ),
+                      //       Text(
+                      //         'Chan',
+                      //         style: TextStyle(
+                      //           color: Colors.red,
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),

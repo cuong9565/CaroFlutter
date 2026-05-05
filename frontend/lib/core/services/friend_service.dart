@@ -74,4 +74,21 @@ class FriendService {
     final data = Service.handleResponse(response);
     return data;
   }
+
+  // /friends/remove
+  static Future<dynamic> removeFriend(
+    String friendRecordId,
+    String userId,
+  ) async {
+    final response = await http.post(
+      Service.getUri('/friends/remove'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'friendRecordId': friendRecordId,
+        'userId': userId,
+      }),
+    );
+    final data = Service.handleResponse(response);
+    return data;
+  }
 }

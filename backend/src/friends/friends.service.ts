@@ -150,4 +150,24 @@ export class FriendService {
 
                 return updated[0];
         }
+
+            async removeFriend(friendRecordId: string, userId: string) {
+                if (!friendRecordId || !userId) {
+                    throw new BadRequestException('Missing friendRecordId or userId');
+                }
+
+                const removed = await this.sql`
+                delete from friends
+                where id = ${friendRecordId}
+                and (iduser_request = ${userId} or iduser_response = ${userId})
+                and status = 'accepted'
+                returning *
+            `;
+
+                if (!removed[0]) {
+                    throw new NotFoundException('Friend record not found');
+                }
+
+                return removed[0];
+            }
 }
