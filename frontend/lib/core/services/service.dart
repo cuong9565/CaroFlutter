@@ -1,11 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class Service {
-  static final String apiUrl = dotenv.env['API_URL'] ?? '';
-
+  static const apiUrl = String.fromEnvironment('API_URL');
   // _handleResponse
   static dynamic handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {

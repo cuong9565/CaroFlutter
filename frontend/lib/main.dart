@@ -4,12 +4,10 @@ import 'package:provider/provider.dart' as provider;
 import 'package:frontend/core/providers/chat_provider.dart';
 import 'package:frontend/core/providers/challenge_provider.dart';
 import 'package:frontend/widgets/router.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
   await initializeDateFormatting();
   runApp(
     provider.MultiProvider(

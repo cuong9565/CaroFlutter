@@ -243,8 +243,9 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           title: const Row(
             children: [
               Icon(Icons.info_outline, color: Colors.blue),
@@ -273,8 +274,9 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           title: const Row(
             children: [
               Icon(Icons.flag_outlined, color: Colors.red),
@@ -282,7 +284,9 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
               Text("Đối thủ bỏ cuộc"),
             ],
           ),
-          content: const Text("Đối thủ đã rời khỏi phòng. Bạn đã giành chiến thắng!"),
+          content: const Text(
+            "Đối thủ đã rời khỏi phòng. Bạn đã giành chiến thắng!",
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -319,7 +323,8 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
   @override
   Widget build(BuildContext context) {
     if (startGame.isEmpty) return const MyLoading(text: "");
-    if (startGame == "ERROR") return SafeArea(child: Scaffold(body: MyErrorPageURL()));
+    if (startGame == "ERROR")
+      return SafeArea(child: Scaffold(body: MyErrorPageURL()));
     if (startGame == "QR") {
       return Center(
         child: Padding(
@@ -334,11 +339,16 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
               SelectableText(
-                GoRouterState.of(context).uri.toString(),
+                "https://caroflutter-frontend.onrender.com/#" +
+                    GoRouterState.of(context).uri.toString(),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
               ),
-              MyQR(url: GoRouterState.of(context).uri.toString()),
+              MyQR(
+                url:
+                    "https://caroflutter-frontend.onrender.com/#" +
+                    GoRouterState.of(context).uri.toString(),
+              ),
               ElevatedButton(
                 onPressed: () {
                   SocketService.socket?.emit('request-out-room', {
@@ -379,294 +389,292 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
         children: [
           Column(
             children: [
-        Frame(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final screenWidth = constraints.maxWidth;
-              final isSmallScreen = screenWidth < 600;
-              
-              // Responsive sizing
-              double iconSize = isSmallScreen ? 20.0 : 25.0;
-              double avatarSize = isSmallScreen ? 30.0 : 40.0;
-              double nameFontSize = isSmallScreen ? 12.0 : 16.0;
-              double statusFontSize = isSmallScreen ? 10.0 : 12.0;
-              double scoreFontSize = isSmallScreen ? 24.0 : 32.0;
-              double spacing = isSmallScreen ? 6.0 : 10.0;
-              double timerSpacing = isSmallScreen ? 4.0 : 6.0;
-              
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      yourX
-                          ? MyCustomPaintX(size: iconSize)
-                          : MyCustomPaintO(size: iconSize),
-                    ],
-                  ),
-                  Expanded(
-                    child: Row(
-                      spacing: spacing,
-                      mainAxisAlignment: MainAxisAlignment.center,
+              Frame(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final screenWidth = constraints.maxWidth;
+                    final isSmallScreen = screenWidth < 600;
+
+                    // Responsive sizing
+                    double iconSize = isSmallScreen ? 20.0 : 25.0;
+                    double avatarSize = isSmallScreen ? 30.0 : 40.0;
+                    double nameFontSize = isSmallScreen ? 12.0 : 16.0;
+                    double statusFontSize = isSmallScreen ? 10.0 : 12.0;
+                    double scoreFontSize = isSmallScreen ? 24.0 : 32.0;
+                    double spacing = isSmallScreen ? 6.0 : 10.0;
+                    double timerSpacing = isSmallScreen ? 4.0 : 6.0;
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Column(
-                          spacing: 0,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        Row(
                           children: [
-                            Text(
-                              isSmallScreen ? "(Bạn)" : currentUserDisplayName,
-                              style: TextStyle(
-                                fontSize: nameFontSize,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
-                              ),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  currentUserStatus,
-                                  style: TextStyle(
-                                    fontSize: statusFontSize,
-                                    fontWeight: FontWeight.w300,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                if (isYourTimerRunning) ...[
-                                  SizedBox(width: timerSpacing),
-                                  _buildTimerChip(
-                                    pieceLabel: yourPiece,
-                                    seconds: remainingTurnSeconds,
-                                  ),
-                                ],
-                              ],
-                            ),
+                            yourX
+                                ? MyCustomPaintX(size: iconSize)
+                                : MyCustomPaintO(size: iconSize),
                           ],
                         ),
-                        PlayerAvatar(
-                          name: currentUserName,
-                          avatarUrl: currentUserAvatarUrl,
-                          size: avatarSize,
-                        ),
-                        Text(
-                          yourRationWin.toString(),
-                          style: TextStyle(
-                            fontSize: scoreFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          ":",
-                          style: TextStyle(
-                            fontSize: scoreFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          opponentRationWin.toString(),
-                          style: TextStyle(
-                            fontSize: scoreFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        PlayerAvatar(
-                          name: opponentName,
-                          avatarUrl: opponentAvatarUrl,
-                          size: avatarSize,
-                        ),
-                        Column(
-                          spacing: 0,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isSmallScreen ? "(Đối thủ)" : opponentDisplayName,
-                              style: TextStyle(
-                                fontSize: nameFontSize,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.black,
-                              ),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  opponentStatus,
-                                  style: TextStyle(
-                                    fontSize: statusFontSize,
-                                    fontWeight: FontWeight.w300,
-                                    color: Colors.black,
+                        Expanded(
+                          child: Row(
+                            spacing: spacing,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Column(
+                                spacing: 0,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    isSmallScreen
+                                        ? "(Bạn)"
+                                        : currentUserDisplayName,
+                                    style: TextStyle(
+                                      fontSize: nameFontSize,
+                                      fontWeight: FontWeight.w300,
+                                      color: Colors.black,
+                                    ),
                                   ),
-                                ),
-                                if (isOpponentTimerRunning) ...[
-                                  SizedBox(width: timerSpacing),
-                                  _buildTimerChip(
-                                    pieceLabel: opponentPiece,
-                                    seconds: remainingTurnSeconds,
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        currentUserStatus,
+                                        style: TextStyle(
+                                          fontSize: statusFontSize,
+                                          fontWeight: FontWeight.w300,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                      if (isYourTimerRunning) ...[
+                                        SizedBox(width: timerSpacing),
+                                        _buildTimerChip(
+                                          pieceLabel: yourPiece,
+                                          seconds: remainingTurnSeconds,
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
-                              ],
-                            ),
+                              ),
+                              PlayerAvatar(
+                                name: currentUserName,
+                                avatarUrl: currentUserAvatarUrl,
+                                size: avatarSize,
+                              ),
+                              Text(
+                                yourRationWin.toString(),
+                                style: TextStyle(
+                                  fontSize: scoreFontSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                ":",
+                                style: TextStyle(
+                                  fontSize: scoreFontSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                opponentRationWin.toString(),
+                                style: TextStyle(
+                                  fontSize: scoreFontSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              PlayerAvatar(
+                                name: opponentName,
+                                avatarUrl: opponentAvatarUrl,
+                                size: avatarSize,
+                              ),
+                              Column(
+                                spacing: 0,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isSmallScreen
+                                        ? "(Đối thủ)"
+                                        : opponentDisplayName,
+                                    style: TextStyle(
+                                      fontSize: nameFontSize,
+                                      fontWeight: FontWeight.w300,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        opponentStatus,
+                                        style: TextStyle(
+                                          fontSize: statusFontSize,
+                                          fontWeight: FontWeight.w300,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                      if (isOpponentTimerRunning) ...[
+                                        SizedBox(width: timerSpacing),
+                                        _buildTimerChip(
+                                          pieceLabel: opponentPiece,
+                                          seconds: remainingTurnSeconds,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            !yourX
+                                ? MyCustomPaintX(size: iconSize)
+                                : MyCustomPaintO(size: iconSize),
                           ],
                         ),
                       ],
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      !yourX
-                          ? MyCustomPaintX(size: iconSize)
-                          : MyCustomPaintO(size: iconSize),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-        const MyDivider(),
-        Expanded(
-          child: InteractiveViewer(
-            minScale: 1.0,
-            maxScale: 3.0,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minWidth: constraints.minWidth,
-                        minHeight: constraints.minHeight,
-                      ),
-                      child: Center(
-                        child: MouseRegion(
-                          onHover: (event) {
-                            if (!yourTurn) {
-                              hoverCell = null;
-                              return;
-                            }
-                            final locationPostion = event.localPosition;
-                            int row = (locationPostion.dy / cellSize).floor();
-                            int col = (locationPostion.dx / cellSize).floor();
-                            if (0 <= row &&
-                                row < gridSize &&
-                                0 <= col &&
-                                col < gridSize &&
-                                !visitedX.contains(
-                                  Offset(
-                                    row.toDouble(),
-                                    col.toDouble(),
+                    );
+                  },
+                ),
+              ),
+              const MyDivider(),
+              Expanded(
+                child: InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 3.0,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: constraints.minWidth,
+                              minHeight: constraints.minHeight,
+                            ),
+                            child: Center(
+                              child: MouseRegion(
+                                onHover: (event) {
+                                  if (!yourTurn) {
+                                    hoverCell = null;
+                                    return;
+                                  }
+                                  final locationPostion = event.localPosition;
+                                  int row = (locationPostion.dy / cellSize)
+                                      .floor();
+                                  int col = (locationPostion.dx / cellSize)
+                                      .floor();
+                                  if (0 <= row &&
+                                      row < gridSize &&
+                                      0 <= col &&
+                                      col < gridSize &&
+                                      !visitedX.contains(
+                                        Offset(row.toDouble(), col.toDouble()),
+                                      ) &&
+                                      !visitedO.contains(
+                                        Offset(row.toDouble(), col.toDouble()),
+                                      )) {
+                                    setState(() {
+                                      hoverCell = Offset(
+                                        row.toDouble(),
+                                        col.toDouble(),
+                                      );
+                                    });
+                                  } else {
+                                    setState(() {
+                                      hoverCell = null;
+                                    });
+                                  }
+                                },
+                                child: GestureDetector(
+                                  onTapUp: _handelOnTapUp,
+                                  child: CustomPaint(
+                                    size: Size(
+                                      gridSize * cellSize,
+                                      gridSize * cellSize,
+                                    ),
+                                    painter:
+                                        MyCustomPaintGameBoardCustomPainter(
+                                          gridSize,
+                                          cellSize,
+                                          visitedX,
+                                          visitedO,
+                                          hoverCell,
+                                          yourX,
+                                          lines,
+                                          stateGame,
+                                        ),
                                   ),
-                                ) &&
-                                !visitedO.contains(
-                                  Offset(
-                                    row.toDouble(),
-                                    col.toDouble(),
-                                  ),
-                                )) {
-                              setState(() {
-                                hoverCell = Offset(
-                                  row.toDouble(),
-                                  col.toDouble(),
-                                );
-                              });
-                            } else {
-                              setState(() {
-                                hoverCell = null;
-                              });
-                            }
-                          },
-                          child: GestureDetector(
-                            onTapUp: _handelOnTapUp,
-                            child: CustomPaint(
-                              size: Size(
-                                gridSize * cellSize,
-                                gridSize * cellSize,
-                              ),
-                              painter: MyCustomPaintGameBoardCustomPainter(
-                                gridSize,
-                                cellSize,
-                                visitedX,
-                                visitedO,
-                                hoverCell,
-                                yourX,
-                                lines,
-                                stateGame,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        const MyDivider(),
-        Frame(
-          child: Row(
-            children: [
-              ButtonRectangle2(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text("Bạn có chắc muốn thoát?"),
-                        content: const Text(
-                          "Việc hủy bỏ ván đấu mặc định đối thủ sẽ thắng.",
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Hủy'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              SocketService.emit('request-out-room', {
-                                'idRoom': idRoom,
-                                'idUser': idUser,
-                              });
-                              context.go('/');
-                            },
-                            child: const Text('Hủy bỏ ván đấu'),
-                          ),
-                        ],
                       );
                     },
-                  );
-                },
-                child: const Row(
-                  spacing: 5,
+                  ),
+                ),
+              ),
+              const MyDivider(),
+              Frame(
+                child: Row(
                   children: [
-                    Text(
-                      "Bỏ cuộc",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black,
+                    ButtonRectangle2(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text("Bạn có chắc muốn thoát?"),
+                              content: const Text(
+                                "Việc hủy bỏ ván đấu mặc định đối thủ sẽ thắng.",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Hủy'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    SocketService.emit('request-out-room', {
+                                      'idRoom': idRoom,
+                                      'idUser': idUser,
+                                    });
+                                    context.go('/');
+                                  },
+                                  child: const Text('Hủy bỏ ván đấu'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      child: const Row(
+                        spacing: 5,
+                        children: [
+                          Text(
+                            "Bỏ cuộc",
+                            style: TextStyle(fontSize: 16, color: Colors.black),
+                          ),
+                          Icon(
+                            FontAwesomeIcons.flag,
+                            size: 16,
+                            color: Colors.black,
+                          ),
+                        ],
                       ),
-                    ),
-                    Icon(
-                      FontAwesomeIcons.flag,
-                      size: 16,
-                      color: Colors.black,
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
             ],
           ),
           if (stateGame != -1) _buildEndGameOverlay(),
@@ -736,15 +744,22 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.hourglass_top_rounded,
-              color: Colors.orange, size: 48),
+          const Icon(
+            Icons.hourglass_top_rounded,
+            color: Colors.orange,
+            size: 48,
+          ),
           const SizedBox(height: 16),
-          const Text("Đã sẵn sàng",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text(
+            "Đã sẵn sàng",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text("Đang chờ đối thủ xác nhận...",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey)),
+          const Text(
+            "Đang chờ đối thủ xác nhận...",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -759,7 +774,8 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Rời khỏi phòng'),
             ),
@@ -792,11 +808,14 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const SizedBox(width: 40), // Cân bằng với icon bên phải
-              Text(str,
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: titleColor)),
+              Text(
+                str,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: titleColor,
+                ),
+              ),
               GestureDetector(
                 onTapDown: (_) => setState(() => _isViewingBoard = true),
                 onTapUp: (_) => setState(() => _isViewingBoard = false),
@@ -807,15 +826,20 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                     color: Colors.grey.shade100,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.visibility_rounded, color: Colors.blue),
+                  child: const Icon(
+                    Icons.visibility_rounded,
+                    color: Colors.blue,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16)),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16),
+          ),
           const SizedBox(height: 20),
           Container(
             width: double.infinity,
@@ -828,12 +852,13 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
               isUserReady == 0
                   ? "Đối thủ đang xem kết quả..."
                   : isUserReady == 1
-                      ? "Đối thủ đã sẵn sàng chơi lại!"
-                      : "Đối thủ đã rời khỏi phòng",
+                  ? "Đối thủ đã sẵn sàng chơi lại!"
+                  : "Đối thủ đã rời khỏi phòng",
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: isUserReady == 1 ? Colors.green : Colors.orange,
-                  fontWeight: FontWeight.w600),
+                color: isUserReady == 1 ? Colors.green : Colors.orange,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -859,7 +884,8 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text("Chơi lại"),
                 ),
@@ -877,7 +903,8 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text("Thoát"),
                 ),
