@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/providers/user_provider.dart';
 import 'package:frontend/core/services/service.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 final historyStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final userId = await UserProvider.storage.read(key: 'uid');

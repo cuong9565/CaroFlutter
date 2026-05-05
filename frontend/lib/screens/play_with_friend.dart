@@ -45,7 +45,7 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
   late List<Line> lines;
   int gridSize = 16;
   final double cellSize = 25;
-  int turnDurationMs = 10000;
+  int turnDurationMs = 30000;
   int remainingTurnSeconds = 0;
   int? _turnDeadlineMs;
   Timer? _turnCountdownTimer;
@@ -939,9 +939,6 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           visitedO = {...visitedO, Offset(row.toDouble(), col.toDouble())};
         }
         yourTurn = false;
-        _setTurnDeadline(
-          DateTime.now().millisecondsSinceEpoch + turnDurationMs,
-        );
         hoverCell = null;
         SocketService.emit('request-on-move', {
           'idRoom': idRoom,

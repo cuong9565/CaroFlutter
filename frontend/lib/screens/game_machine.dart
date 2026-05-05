@@ -45,7 +45,7 @@ class _GameMachineState extends ConsumerState<GameMachine> {
   late List<Line> lines;
   int gridSize = 16;
   final double cellSize = 25;
-  int turnDurationMs = 10000;
+  int turnDurationMs = 30000;
   int remainingTurnSeconds = 0;
   int? _turnDeadlineMs;
   Timer? _turnCountdownTimer;
@@ -96,7 +96,7 @@ class _GameMachineState extends ConsumerState<GameMachine> {
           stateGame = data['stateGame'];
           isUserReady = data['isUserReady'];
           isYouReady = data['isYouReady'];
-          turnDurationMs = (data['turnDurationMs'] as num?)?.toInt() ?? 10000;
+          turnDurationMs = (data['turnDurationMs'] as num?)?.toInt() ?? 30000;
           final payloadBoardSize =
               (data['boardSize'] as num?)?.toInt() ??
               ((data['board'] as List?)?.length ?? gridSize);
@@ -319,7 +319,7 @@ class _GameMachineState extends ConsumerState<GameMachine> {
                   builder: (context, constraints) {
                     final screenWidth = constraints.maxWidth;
                     final isSmallScreen = screenWidth < 600;
-                          
+
                     // Responsive sizing
                     double iconSize = isSmallScreen ? 20.0 : 25.0;
                     double avatarSize = isSmallScreen ? 30.0 : 40.0;
@@ -328,7 +328,7 @@ class _GameMachineState extends ConsumerState<GameMachine> {
                     double scoreFontSize = isSmallScreen ? 24.0 : 32.0;
                     double spacing = isSmallScreen ? 6.0 : 10.0;
                     double timerSpacing = isSmallScreen ? 4.0 : 6.0;
-                    
+
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -352,7 +352,9 @@ class _GameMachineState extends ConsumerState<GameMachine> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    isSmallScreen ? "(Bạn)" : currentUserDisplayName,
+                                    isSmallScreen
+                                        ? "(Bạn)"
+                                        : currentUserDisplayName,
                                     style: TextStyle(
                                       fontSize: nameFontSize,
                                       fontWeight: FontWeight.w300,
@@ -421,7 +423,9 @@ class _GameMachineState extends ConsumerState<GameMachine> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    isSmallScreen ? "(Đối thủ)" : opponentDisplayName,
+                                    isSmallScreen
+                                        ? "(Đối thủ)"
+                                        : opponentDisplayName,
                                     style: TextStyle(
                                       fontSize: nameFontSize,
                                       fontWeight: FontWeight.w300,
@@ -572,7 +576,7 @@ class _GameMachineState extends ConsumerState<GameMachine> {
                                     SocketService.emit('request-out-room', {
                                       'idRoom': idRoom,
                                       'idUser': idUser,
-                                      'gameMode': 'AI'
+                                      'gameMode': 'AI',
                                     });
                                     context.go('/');
                                   },
@@ -866,9 +870,6 @@ class _GameMachineState extends ConsumerState<GameMachine> {
           visitedO = {...visitedO, Offset(row.toDouble(), col.toDouble())};
         }
         yourTurn = false;
-        _setTurnDeadline(
-          DateTime.now().millisecondsSinceEpoch + turnDurationMs,
-        );
         hoverCell = null;
         SocketService.emit('request-on-move', {
           'idRoom': idRoom,
