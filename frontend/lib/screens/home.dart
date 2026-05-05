@@ -39,14 +39,14 @@ class Home extends StatelessWidget {
                     Expanded(
                       child: Column(
                         spacing: 10,
-                        children: [GameMode(), _Ranking()],
+                        children: [GameMode()],
                       ),
                     ),
                     Container(
                       constraints: BoxConstraints(maxWidth: 300),
                       child: Column(
                         spacing: 10,
-                        children: [_GameProcess(), _GameRules()],
+                        children: [_GameRules()],
                       ),
                     ),
                   ],
@@ -57,8 +57,6 @@ class Home extends StatelessWidget {
                 spacing: 20,
                 children: [
                   GameMode(),
-                  _Ranking(),
-                  _GameProcess(),
                   _GameRules(),
                 ],
               ));
@@ -98,18 +96,49 @@ class _GameMode extends ConsumerState<GameMode> {
     (BuildContext context) {
       // Lắng nghe khi userNotifier thay đổi
       ref.listenManual(userNotifier, (previous, next) {
-        if (next.hasValue) {
-          SocketService.socket.emit('request-create-room', {
-            'idUser': next.value!['user']['id'],
-          });
-        }
+        final userId = _getUserId(next.value);
+        if (userId == null) return;
+        _ensureSocketReady(userId);
+        SocketService.emit('request-create-room', {'idUser': userId});
       });
 
       // Khi widget được khởi tạo
       final current = ref.read(userNotifier);
-      if (current.hasValue) {
-        SocketService.socket.emit('request-create-room', {
-          'idUser': current.value!['user']['id'],
+      final userId = _getUserId(current.value);
+      if (userId != null) {
+        _ensureSocketReady(userId);
+        SocketService.emit('request-create-room', {'idUser': userId});
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.white,
+        builder: (context) {
+          return MyLoading(text: "");
+        },
+      );
+    },
+    (BuildContext context) {
+      // Lắng nghe khi userNotifier thay đổi
+      ref.listenManual(userNotifier, (previous, next) {
+        final userId = _getUserId(next.value);
+        if (userId == null) return;
+        _ensureSocketReady(userId);
+        SocketService.emit('request-create-room', {
+          'idUser': userId,
+          'gameMode': 'AI',
+        });
+      });
+
+      // Khi widget được khởi tạo
+      final current = ref.read(userNotifier);
+      final userId = _getUserId(current.value);
+      if (userId != null) {
+        _ensureSocketReady(userId);
+        SocketService.emit('request-create-room', {
+          'idUser': userId,
+          'gameMode': 'AI',
         });
       }
 
@@ -122,24 +151,76 @@ class _GameMode extends ConsumerState<GameMode> {
         },
       );
     },
-    (BuildContext context) {},
     (BuildContext context) {
-      context.go('/game-online');
+      // Lắng nghe khi userNotifier thay đổi
+      ref.listenManual(userNotifier, (previous, next) {
+        final userId = _getUserId(next.value);
+        if (userId == null) return;
+        _ensureSocketReady(userId);
+        SocketService.emit('request-play-game-online', {
+          'idUser': userId,
+        });
+      });
+
+      // Khi widget được khởi tạo
+      final current = ref.read(userNotifier);
+      final userId = _getUserId(current.value);
+      if (userId != null) {
+        _ensureSocketReady(userId);
+        SocketService.emit('request-play-game-online', {
+          'idUser': userId,
+        });
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.white,
+        builder: (context) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: 25,
+              children: [
+                Text(
+                  "Đang tìm một người chơi...",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w300,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+
+                CircularProgressIndicator(),
+                ButtonNormal(
+                  text: "Thoát",
+                  onPressed: () => {
+                    SocketService.emit('out-room'),
+                    Navigator.pop(context),
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
     },
   ];
   // Danh sách chức năng cho nút trợ giúp
-  final List<void Function(BuildContext)> _functionHelper = [
+  List<void Function(BuildContext)> get _functionHelper => [
     (BuildContext btnContext) {
       final List<String> txts = [
         "Chơi cùng một người bạn",
         "+ Thông qua đường link (hoặc mã QR)",
-        "+ Thông qua danh sách bạn bè",
       ];
       _funtionHelperLayout(btnContext, 110, "Chơi với một người bạn", txts);
     },
     (BuildContext btnContext) {
-      final List<String> txts = ["Chơi với máy"];
-      _funtionHelperLayout(btnContext, 60, "Chơi với máy", txts);
+      final List<String> txts = [
+        "Chơi với máy",
+        "+ Chơi cùng với một ai đơn giản",
+      ];
+      _funtionHelperLayout(btnContext, 110, "Chơi với máy", txts);
     },
     (BuildContext btnContext) {
       final List<String> txts = [
@@ -154,24 +235,49 @@ class _GameMode extends ConsumerState<GameMode> {
     super.initState();
     // Lắng nghe khi userNotifier thay đổi
     ref.listenManual(userNotifier, (previous, next) {
-      if (next.hasValue) {
-        _initOnceSocket();
+      final userId = _getUserId(next.value);
+      if (userId != null) {
+        _initOnceSocket(userId);
       }
     });
 
     // Khi widget được khởi tạo
     final current = ref.read(userNotifier);
-    if (current.hasValue) {
-      _initOnceSocket();
+    final userId = _getUserId(current.value);
+    if (userId != null) {
+      _initOnceSocket(userId);
     }
   }
 
-  void _initOnceSocket() {
-    SocketService.socket.off('response-create-room');
-    SocketService.socket.once('response-create-room', (data) {
+  String? _getUserId(Map<String, dynamic>? userData) {
+    final user = userData?['user'];
+    final id = (user is Map) ? user['id'] : null;
+    final userId = id?.toString();
+    if (userId == null || userId.isEmpty) return null;
+    return userId;
+  }
+
+  void _ensureSocketReady(String userId) {
+    if (!SocketService.isInitialized) {
+      SocketService.init(userId);
+    }
+  }
+
+  void _initOnceSocket(String userId) {
+    _ensureSocketReady(userId);
+    SocketService.off('response-create-room');
+    SocketService.once('response-create-room', (data) {
       if (!mounted) return;
       final String idRoom = data['idRoom'];
-      context.go('/play/$idRoom');
+      final String gameMode = data['gameMode'] ?? 'FRIEND';
+
+      if (gameMode == 'AI') {
+        context.go('/play-ai/$idRoom');
+      } else if (gameMode == 'FRIEND') {
+        context.go('/play/$idRoom');
+      } else {
+        context.go('/game-online/$idRoom');
+      }
     });
   }
 
@@ -285,165 +391,6 @@ class _GameMode extends ConsumerState<GameMode> {
   }
 }
 
-class _Ranking extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        spacing: 20,
-        children: [
-          Row(
-            spacing: 10,
-            children: [
-              Icon(FontAwesomeIcons.trophy, color: Colors.orange, size: 30),
-              Text(
-                "Bảng xếp hạng",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          SizedBox(
-            width: double.infinity,
-            child: DataTable(
-              horizontalMargin: 0,
-              showCheckboxColumn: false,
-              columnSpacing: 8,
-              columns: [
-                DataColumn(
-                  label: Text("Hạng", style: TextStyle()),
-                  headingRowAlignment: MainAxisAlignment.start,
-                ),
-                DataColumn(
-                  label: Text("Người chơi", style: TextStyle()),
-                  headingRowAlignment: MainAxisAlignment.start,
-                ),
-                DataColumn(
-                  label: Text("W/L/D/Rate", style: TextStyle()),
-                  headingRowAlignment: MainAxisAlignment.end,
-                ),
-              ],
-              rows: [
-                for (int i = 0; i < 10; i++)
-                  DataRow(
-                    onSelectChanged: (indexSelected) {
-                      print(indexSelected);
-                    },
-                    cells: [
-                      DataCell(Text("#1", style: TextStyle())),
-                      DataCell(
-                        Row(
-                          children: [Icon(Icons.abc_outlined), Text("Player1")],
-                        ),
-                      ),
-                      DataCell(
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text("150/45/5/76.9%", style: TextStyle()),
-                        ),
-                      ),
-                    ],
-                  ),
-                DataRow(
-                  onSelectChanged: (indexSelected) {
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#999", style: TextStyle())),
-                    DataCell(
-                      Row(children: [Icon(Icons.abc_outlined), Text("Me")]),
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle()),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Khung chứa tiến trình trò chơi
-class _GameProcess extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        spacing: 10,
-        children: [
-          Row(
-            spacing: 10,
-            children: [
-              Icon(FontAwesomeIcons.chartLine, color: Colors.green, size: 30),
-              Text(
-                "Tiến trình trò chơi",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          CircleChart(number: 45, total: 70),
-          LinearChart(
-            title: "Thắng",
-            number: 45,
-            total: 70,
-            color: Colors.green,
-          ),
-          LinearChart(title: "Thua", number: 20, total: 70, color: Colors.red),
-          LinearChart(title: "Hòa", number: 5, total: 70, color: Colors.orange),
-          Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Số trận:",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              Text(
-                "70",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // Khung chứa luật chơi
 class _GameRules extends StatelessWidget {
   @override
@@ -524,4 +471,5 @@ void _funtionHelperLayout(
 void _navigateToPlayWithFriend(BuildContext context) {
   context.go('/game');
 }
+
 //

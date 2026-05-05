@@ -49,9 +49,17 @@ export type ResponseMovePosition = {
     socket: Socket;
     result: number; // 0 => Thắng, 1 => Thua, 2 => Hòa
   };
-  typeLine?: number;
-  top?: Cell;
-  bottom?: Cell;
+  lines?: {
+    typeLine: number;
+    top: {
+      x: number;
+      y: number;
+    };
+    bottom: {
+      x: number;
+      y: number;
+    };
+  }[];
   lastTurn?: Cell;
 };
 
@@ -80,6 +88,7 @@ export type RequestCreateRoomType = {
   idRoom?: string;
   idUser: string;
   socketUser: Socket;
+  gameMode?: 'FRIEND' | 'AI' | 'ONLINE';
 };
 
 export type RoomsType = {
@@ -98,10 +107,24 @@ export type RoomsType = {
       id: string;
       userTurn: number; // 0 || 1
       userX: number; // 0 || 1
+      numMove: number;
       boards: number[][]; // -1: null, 0: X, 1: O
       stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
       isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
       isU1Ready: number;
+      lines: {
+        typeLine: number;
+        top: {
+          x: number;
+          y: number;
+        };
+        bottom: {
+          x: number;
+          y: number;
+        };
+      }[];
+      turnTimeout?: NodeJS.Timeout;
+      turnTimeoutExpiresAt?: number;
     }[];
     ratio: {
       0: {
@@ -118,15 +141,41 @@ export type RoomsType = {
   };
 };
 
+export type MatchType = {
+  id: string;
+  userTurn: number; // 0 || 1
+  userX: number; // 0 || 1
+  numMove: number;
+  boards: number[][]; // -1: null, 0: X, 1: O
+  stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
+  isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
+  isU1Ready: number;
+  lines: {
+    typeLine: number;
+    top: {
+      x: number;
+      y: number;
+    };
+    bottom: {
+      x: number;
+      y: number;
+    };
+  }[];
+  turnTimeout?: NodeJS.Timeout;
+  turnTimeoutExpiresAt?: number;
+};
+
 export type RequestStartGameType = {
   idRoom: string;
   idUser: string;
+  gameMode: string;
 };
 
 export type RequestParamStartGameType = {
   idRoom: string;
   idUser: string;
   socketUser: Socket;
+  gameMode?: string;
 };
 
 export type ResponseStartGameType = {
@@ -149,9 +198,11 @@ export type ResponseStartGameType = {
     stateGame: number; // -1: Chưa đấu xong, 0 => U0Thắng, 1 => U0Thua, 2 => U0Hòa
     isU0Ready: number; // 0: Chưa sẵn sàng, 1: Đã sẵn sàng, 2: Đã out
     isU1Ready: number;
+    turnTimeoutExpiresAt?: number;
   };
   userTurn?: number;
   userX?: number;
+  numMove?: number;
   ratio?: {
     0: {
       win: number;
@@ -164,6 +215,17 @@ export type ResponseStartGameType = {
       draw: number;
     };
   };
+  lines?: {
+    typeLine: number;
+    top: {
+      x: number;
+      y: number;
+    };
+    bottom: {
+      x: number;
+      y: number;
+    };
+  }[];
 };
 
 export type RequestOnMove = {
@@ -171,6 +233,86 @@ export type RequestOnMove = {
   idUser: string;
   x: number;
   y: number;
+  gameMode?: string;
+};
+
+export type BotRoomsType = {
+  [idRoom: string]: {
+    user: UserRequestType;
+    match: {
+      id: string;
+      userTurn: 0 | 1; // 0: user, 1: bot
+      userX: 0 | 1; // 0: user is X, 1: user is O
+      numMove: number;
+      board: number[][];
+      stateGame: number; // -1: playing, 0: user win, 1: user lose, 2: draw
+      lines: any[];
+      turnTimeout?: NodeJS.Timeout;
+      turnTimeoutExpiresAt?: number;
+    };
+    ratio: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
+  };
+};
+
+export type RequestPlayWithBotType = {
+  idUser: string;
+  socketUser: Socket;
+};
+
+export type RequestOnMoveWithBot = {
+  idRoom: string;
+  idUser: string;
+  x: number;
+  y: number;
+};
+
+export type ResponseStartGameWithBotType = {
+  state: 'PLAY' | 'ERROR' | 'LOAD';
+  idRoom?: string;
+  yourTurn?: boolean;
+  yourX?: boolean;
+  board?: number[][];
+  message?: string;
+  stateGame?: number;
+  isUserReady?: number;
+  isYouReady?: number;
+  yourRation?: {
+    win: number;
+    loose: number;
+    draw: number;
+  };
+  opponentRation?: {
+    win: number;
+    loose: number;
+    draw: number;
+  };
+  opponent?: {
+    id?: string;
+    username?: string;
+    avatarUrl?: string | null;
+  };
+  you?: {
+    id?: string;
+    username?: string;
+    avatarUrl?: string | null;
+  };
+  turnDurationMs?: number;
+  turnDeadlineMs?: number;
+  boardSize?: number;
+  lines?: any[];
+};
+
+export type ResponseOnMoveWithBotType = {
+  state: 'OK' | 'ENDGAME' | 'ERROR';
+  x?: number;
+  y?: number;
+  result?: number; // 0 => user win, 1 => user lose, 2 => draw
+  lastTurn?: Cell;
+  yourTurn?: boolean;
 };
 
 export type ResponseOnMovePosition = {
@@ -178,6 +320,7 @@ export type ResponseOnMovePosition = {
   socketUser?: Socket;
   x?: number;
   y?: number;
+  turnDeadlineMs?: number;
   client1?: {
     idUser: string;
     socket: Socket;
@@ -200,7 +343,17 @@ export type ResponseOnMovePosition = {
       draw: number;
     };
   };
-  typeLine?: number;
+  lines?: {
+    typeLine: number;
+    top: {
+      x: number;
+      y: number;
+    };
+    bottom: {
+      x: number;
+      y: number;
+    };
+  }[];
   top?: Cell;
   bottom?: Cell;
   lastTurn?: Cell;

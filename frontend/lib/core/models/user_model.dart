@@ -2,7 +2,7 @@ class UserModel {
   final String id;
   final String username;
   final int typeLogin;
-  final String? avartarUrl;
+  final String? avatarUrl;
   final double rating;
   final int totalMatches;
   final int totalWins;
@@ -14,7 +14,7 @@ class UserModel {
     required this.id,
     required this.username,
     required this.typeLogin,
-    required this.avartarUrl,
+    required this.avatarUrl,
     required this.rating,
     required this.totalMatches,
     required this.totalWins,
@@ -28,7 +28,7 @@ class UserModel {
       id: json['id'],
       username: json['username'],
       typeLogin: json['type_login'],
-      avartarUrl: json['avatar_url'],
+      avatarUrl: json['avatar_url'],
       rating: double.tryParse(json['rating']?.toString() ?? '0.0') ?? 0.0,
       totalMatches: json['total_matches'] ?? 0,
       totalWins: json['total_wins'] ?? 0,
@@ -38,12 +38,12 @@ class UserModel {
     );
   }
 
-  Map<String , dynamic> toJson(){
-    return  {
-      'id' : id,
-      'name' : username,
-      'type_login' : typeLogin,
-      'avatar': avartarUrl,
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'username': username,
+      'type_login': typeLogin,
+      'avatar_url': avatarUrl,
       'rating': rating,
       'total_matches': totalMatches,
       'total_wins': totalWins,
@@ -52,6 +52,4 @@ class UserModel {
       'isOnline': isOnline,
     };
   }
-
-
 }

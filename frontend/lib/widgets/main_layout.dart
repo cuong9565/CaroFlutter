@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:frontend/core/notifiers/user_notifier.dart';
 import 'package:frontend/widgets/buttons/button.dart';
@@ -10,6 +12,7 @@ import 'package:frontend/widgets/router.dart';
 import 'package:frontend/widgets/switch/switch.dart';
 import 'package:frontend/widgets/switch/switch_volumn_main.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
@@ -50,15 +53,11 @@ class _MainLayout extends ConsumerState<Mainlayout> {
   // Danh sách các hàm cho chức năng ở header
   final List<void Function(BuildContext)> showPopOverFunctions = [
     _showPopOverUser,
-    _showPopOverAlert,
-    _showPopOverSetting,
   ];
 
   // Danh sách icon cho chức năng ở header
   final List<IconData> popOverFunctionsIcon = [
     FontAwesomeIcons.user,
-    FontAwesomeIcons.bell,
-    FontAwesomeIcons.gear,
   ];
 
   // Danh đường dẫn
@@ -104,17 +103,39 @@ class _MainLayout extends ConsumerState<Mainlayout> {
                       Row(
                         spacing: 10,
                         children: [
-                          for (int i = 0; i < showPopOverFunctions.length; i++)
-                            CircleButton1(
-                              onPressed: (btnContext) {
-                                showPopOverFunctions[i](btnContext);
-                              },
-                              child: Icon(
-                                popOverFunctionsIcon[i],
-                                size: 15,
-                                color: Colors.grey[800],
-                              ),
+                          // Display user avatar and name instead of popup button
+                          InkWell(
+                            onTap: () {
+                              context.go('/account');
+                            },
+                            child: Row(
+                              spacing: 8,
+                              children: [
+                                // User Avatar
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundImage: (data?['user']?['avatar_url'] != null && 
+                                               data?['user']?['avatar_url']!.isNotEmpty)
+                                      ? NetworkImage(data?['user']?['avatar_url']!)
+                                      : null,
+                                  backgroundColor: Colors.grey[300],
+                                  child: (data?['user']?['avatar_url'] == null || 
+                                             data?['user']?['avatar_url']!.isEmpty)
+                                      ? Icon(Icons.person, size: 16, color: Colors.grey[600])
+                                      : null,
+                                ),
+                                // User Name
+                                Text(
+                                  data?['user']?['username'] ?? 'Guest',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
                     ],
@@ -139,7 +160,19 @@ class _MainLayout extends ConsumerState<Mainlayout> {
             );
           },
           loading: () => Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text("ERROR")),
+          error: (e, st) {
+            if (kDebugMode) {
+              debugPrint('Mainlayout user init error: $e');
+              debugPrint('$st');
+            }
+
+            return Center(
+              child: Text(
+                kDebugMode ? 'ERROR: $e' : 'ERROR',
+                textAlign: TextAlign.center,
+              ),
+            );
+          },
         );
   }
 
@@ -240,18 +273,28 @@ void _showPopOverUser(BuildContext btnContext) {
   // For Item PopUp
   final List<void Function()> onPresseds = [
     () {
-      Navigator.of(btnContext).pop();
+      btnContext.go("/login");
     },
-    () {},
-    () {},
+    () async {
+      (!kIsWeb)
+          ? {
+              await FlutterSecureStorage().delete(key: 'uid'),
+              btnContext.go('/'),
+            }
+          : {
+              await FlutterSecureStorage().delete(key: 'uid'),
+              GoogleSignIn.instance.disconnect(),
+              btnContext.go('/'),
+            };
+    },
   ];
   final List<IconData> iconDatas = [
     FontAwesomeIcons.arrowRightToBracket,
     FontAwesomeIcons.arrowRightToBracket,
     FontAwesomeIcons.arrowRightFromBracket,
   ];
-  final List<String> txts = ["Lưu tài khoản", "Đăng nhập", "Đăng xuất"];
-  final List<Color> colors = [Colors.black, Colors.black, Colors.red];
+  final List<String> txts = ["Đăng nhập", "Đăng xuất"];
+  final List<Color> colors = [Colors.black, Colors.red];
 
   // Gọi hàm
   PopUpLayout(

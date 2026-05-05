@@ -1,17 +1,24 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Socket } from 'socket.io';
+import type { Database } from 'src/database/database.types';
 import {
+  BotRoomsType,
   Cell,
   MatchesType,
+  MatchType,
   MovePosition,
   QueueGameOnlineType,
   RequestCreateRoomType,
   RequestOnMove,
+  RequestOnMoveWithBot,
   RequestParamStartGameType,
+  RequestPlayWithBotType,
   RequestStartGameType,
   ResponseMovePosition,
+  ResponseOnMoveWithBotType,
   ResponseOnMovePosition,
   ResponseOutRoom,
+  ResponseStartGameWithBotType,
   ResponseStartGameType,
   RoomsOnlineGameType,
   RoomsType,
@@ -20,16 +27,62 @@ import {
 } from './game.type';
 import { MatchesPlayerService } from 'src/matches_player/matches_player.service';
 import { MatchService } from 'src/match/match.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class GameService {
   private QueueGameOnline: QueueGameOnlineType = [];
   private RoomsOnlineGame: RoomsOnlineGameType = {};
   private Rooms: RoomsType = {};
+  private TIME_LIMIT: number = 30 * 1000; // 30 giây
+  private readonly DEFAULT_BOARD_SIZE = 16;
+  private readonly MIN_BOARD_SIZE = 10;
+  private readonly MAX_BOARD_SIZE = 50;
+  private boardSizeCache = this.DEFAULT_BOARD_SIZE;
+  private boardSizeLoadedAt = 0;
+
+  private BotRooms: BotRoomsType = {};
   constructor(
+    @Inject('POSTGRES_POOL')
+    private readonly sql: Database,
     private readonly matchesPlayerService: MatchesPlayerService,
     private readonly matchService: MatchService,
+    private readonly usersService: UsersService,
   ) {}
+
+  getTurnTimeLimitMs(): number {
+    return this.TIME_LIMIT;
+  }
+
+  async getBoardSize(): Promise<number> {
+    const now = Date.now();
+    if (now - this.boardSizeLoadedAt < 60_000) {
+      return this.boardSizeCache;
+    }
+
+    try {
+      const rows = await this.sql`
+        select board_size
+        from game_settings
+        where board_size is not null
+        limit 1
+      `;
+      const rawValue = rows?.[0]?.board_size;
+      const parsed = Number(rawValue);
+      if (
+        Number.isInteger(parsed) &&
+        parsed >= this.MIN_BOARD_SIZE &&
+        parsed <= this.MAX_BOARD_SIZE
+      ) {
+        this.boardSizeCache = parsed;
+      }
+    } catch {
+      // Fallback default when table/column does not exist yet.
+    }
+
+    this.boardSizeLoadedAt = now;
+    return this.boardSizeCache;
+  }
 
   AddToQueue(user: UserRequestType) {
     this.QueueGameOnline.push(user);
@@ -50,6 +103,15 @@ export class GameService {
     this.QueueGameOnline = this.QueueGameOnline.filter(
       (item) => item.socket !== socket,
     );
+
+    // Xóa bot room timeout nếu có, nhưng không xóa dữ liệu phòng ngay lập tức để hỗ trợ load lại trang
+    for (const idRoom of Object.keys(this.BotRooms)) {
+      if (this.BotRooms[idRoom].user.socket === socket) {
+        if (this.BotRooms[idRoom].match.turnTimeout) {
+          clearTimeout(this.BotRooms[idRoom].match.turnTimeout);
+        }
+      }
+    }
   }
 
   async StartGameOnline(matches: MatchesType) {
@@ -57,16 +119,18 @@ export class GameService {
       matches.firstUser.idUser,
       matches.secondUser.idUser,
       true,
+      'ONLINE',
     );
 
+    const boardSize = await this.getBoardSize();
     const isUser1Playfirst = Math.random() < 0.5;
     this.RoomsOnlineGame[room['id']] = {
       firstUser: matches.firstUser,
       secondUser: matches.secondUser,
       isFirstUserMove: isUser1Playfirst,
       isX: isUser1Playfirst,
-      board: Array.from({ length: 16 }, () =>
-        Array.from({ length: 16 }, () => null),
+      board: Array.from({ length: boardSize }, () =>
+        Array.from({ length: boardSize }, () => null),
       ),
     };
 
@@ -121,27 +185,6 @@ export class GameService {
         bottom: bottom,
       });
     }
-    if (line1 >= 5)
-      return {
-        status: true,
-        client1: {
-          idUser: oldData.firstUser.idUser,
-          socket: oldData.firstUser.socket,
-          result: oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: oldData.secondUser.idUser,
-          socket: oldData.secondUser.socket,
-          result: !oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        typeLine: 1,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: move.x,
-          y: move.y,
-        },
-      };
 
     // // Đường ngang
     let line2 = 1;
@@ -166,27 +209,6 @@ export class GameService {
         bottom: bottom,
       });
     }
-    if (line2 >= 5)
-      return {
-        status: true,
-        client1: {
-          idUser: oldData.firstUser.idUser,
-          socket: oldData.firstUser.socket,
-          result: oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: oldData.secondUser.idUser,
-          socket: oldData.secondUser.socket,
-          result: !oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        typeLine: 2,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: move.x,
-          y: move.y,
-        },
-      };
 
     // // Đường chéo huyền
     let line3 = 1;
@@ -211,27 +233,6 @@ export class GameService {
         bottom: bottom,
       });
     }
-    if (line3 >= 5)
-      return {
-        status: true,
-        client1: {
-          idUser: oldData.firstUser.idUser,
-          socket: oldData.firstUser.socket,
-          result: oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: oldData.secondUser.idUser,
-          socket: oldData.secondUser.socket,
-          result: !oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        typeLine: 3,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: move.x,
-          y: move.y,
-        },
-      };
 
     // // Đường chéo sắc
     let line4 = 1;
@@ -257,7 +258,8 @@ export class GameService {
       });
     }
 
-    if (line4 >= 5)
+    // Send win
+    if (lines.length > 0) {
       return {
         status: true,
         client1: {
@@ -270,14 +272,13 @@ export class GameService {
           socket: oldData.secondUser.socket,
           result: !oldData.isFirstUserMove ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
         },
-        typeLine: 4,
-        top: top,
-        bottom: bottom,
+        lines: lines,
         lastTurn: {
           x: move.x,
           y: move.y,
         },
       };
+    }
 
     // Đổi lượt chơi
     this.RoomsOnlineGame[move.roomId].isFirstUserMove =
@@ -314,10 +315,12 @@ export class GameService {
   ): Promise<RequestCreateRoomType> {
     const idUser = data.idUser;
     const socketUser = data.socketUser;
+    const gameMode = data.gameMode;
 
     const room = await this.matchesPlayerService.createMatchesPlayerOnlyUser1(
       idUser,
       false,
+      gameMode,
     );
 
     this.Rooms[room.id] = {
@@ -355,307 +358,1388 @@ export class GameService {
     const idRoom = data.idRoom;
     const idUser = data.idUser;
     const socketUser = data.socketUser;
+    const gameMode = data.gameMode;
 
-    if (!this.Rooms[idRoom]) {
+    if (gameMode == 'AI') {
+      if (!this.Rooms[idRoom]) {
+        return {
+          state: 'ERROR',
+        };
+      }
+      const room = this.Rooms[idRoom];
+      if (!room.user[1]) {
+        if (room.match.length == 0)
+          return this.CreateNewMatch(idRoom, gameMode);
+
+        if (idUser === room.user[0].idUser) {
+          this.Rooms[idRoom].user[0].socketUser = data.socketUser;
+          return {
+            state: 'LOAD',
+            user: this.Rooms[idRoom].user,
+            match: this.Rooms[idRoom].match.at(-1),
+            ratio: this.Rooms[idRoom].ratio,
+            userTurn: this.Rooms[idRoom].match.at(-1)?.userTurn,
+            userX: this.Rooms[idRoom].match.at(-1)?.userX,
+            numMove: this.Rooms[idRoom].match.at(-1)?.numMove,
+            lines: this.Rooms[idRoom].match.at(-1)?.lines,
+          };
+        }
+      }
       return {
         state: 'ERROR',
       };
-    }
-    const room = this.Rooms[idRoom];
-    if (!room.user[1]) {
-      // Nếu phòng chưa đủ người
-      if (idUser === room.user[0].idUser) {
-        this.Rooms[idRoom].user[0].socketUser = data.socketUser;
-        // Đúng user 1
-        return {
-          state: 'QR',
-        };
-      } else {
-        this.Rooms[idRoom].user[1] = {
-          idUser: idUser,
-          socketUser: socketUser,
-        };
-        await this.matchesPlayerService.updateMatchesPlayerUser(idRoom, idUser);
-        return await this.CreateNewMatch(idRoom);
-      }
     } else {
-      // Nếu phòng đã đủ người
-      if (idUser === room.user[0].idUser) {
-        this.Rooms[idRoom].user[0].socketUser = data.socketUser;
+      if (!this.Rooms[idRoom]) {
         return {
-          state: 'LOAD',
-          user: this.Rooms[idRoom].user,
-          match: this.Rooms[idRoom].match.at(-1),
-          ratio: this.Rooms[idRoom].ratio,
-          userTurn: this.Rooms[idRoom].match.at(-1)?.userTurn,
-          userX: this.Rooms[idRoom].match.at(-1)?.userX,
-        };
-      } else if (idUser === room.user[1].idUser) {
-        this.Rooms[idRoom].user[1]!.socketUser = data.socketUser;
-        return {
-          state: 'LOAD',
-          user: this.Rooms[idRoom].user,
-          match: this.Rooms[idRoom].match.at(-1),
-          ratio: this.Rooms[idRoom].ratio,
-          userTurn: this.Rooms[idRoom].match.at(-1)?.userTurn,
-          userX: this.Rooms[idRoom].match.at(-1)?.userX,
+          state: 'ERROR',
         };
       }
+      const room = this.Rooms[idRoom];
+      if (!room.user[1]) {
+        // Nếu phòng chưa đủ người
+        if (idUser === room.user[0].idUser) {
+          this.Rooms[idRoom].user[0].socketUser = data.socketUser;
+          // Đúng user 1
+          return {
+            state: 'QR',
+          };
+        } else {
+          this.Rooms[idRoom].user[1] = {
+            idUser: idUser,
+            socketUser: socketUser,
+          };
+          await this.matchesPlayerService.updateMatchesPlayerUser(
+            idRoom,
+            idUser,
+          );
+          return await this.CreateNewMatch(idRoom, gameMode || 'FRIEND');
+        }
+      } else {
+        // Nếu phòng đã đủ người
+        if (idUser === room.user[0].idUser) {
+          this.Rooms[idRoom].user[0].socketUser = data.socketUser;
+          return {
+            state: 'LOAD',
+            user: this.Rooms[idRoom].user,
+            match: this.Rooms[idRoom].match.at(-1),
+            ratio: this.Rooms[idRoom].ratio,
+            userTurn: this.Rooms[idRoom].match.at(-1)?.userTurn,
+            userX: this.Rooms[idRoom].match.at(-1)?.userX,
+            numMove: this.Rooms[idRoom].match.at(-1)?.numMove,
+            lines: this.Rooms[idRoom].match.at(-1)?.lines,
+          };
+        } else if (idUser === room.user[1].idUser) {
+          this.Rooms[idRoom].user[1]!.socketUser = data.socketUser;
+          return {
+            state: 'LOAD',
+            user: this.Rooms[idRoom].user,
+            match: this.Rooms[idRoom].match.at(-1),
+            ratio: this.Rooms[idRoom].ratio,
+            userTurn: this.Rooms[idRoom].match.at(-1)?.userTurn,
+            userX: this.Rooms[idRoom].match.at(-1)?.userX,
+            numMove: this.Rooms[idRoom].match.at(-1)?.numMove,
+            lines: this.Rooms[idRoom].match.at(-1)?.lines,
+          };
+        }
+        return {
+          state: 'ERROR',
+        };
+      }
+    }
+  }
+
+  async RequestOnMove(
+    data: RequestOnMove,
+    gameMode: string,
+  ): Promise<ResponseOnMovePosition> {
+    if (gameMode == 'FRIEND') {
+      const idRoom = data.idRoom;
+      const idUser = data.idUser;
+      const x = data.x;
+      const y = data.y;
+      const lines: {
+        typeLine: number;
+        top: {
+          x: number;
+          y: number;
+        };
+        bottom: {
+          x: number;
+          y: number;
+        };
+      }[] = [];
+
+      // Check valid board
+      if (!this.Rooms[idRoom]) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      // Lấy trận đấu hiện tại
+      const currentMatch = this.Rooms[idRoom].match.at(-1)!;
+
+      if (currentMatch.stateGame !== -1) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      // Check valid user
+      const turn = currentMatch.userTurn;
+      if (this.Rooms[idRoom].user[turn === 0 ? 0 : 1]!.idUser != idUser) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      // Check valid move
+      if (this.Rooms[idRoom].match.at(-1)!.boards[x][y] !== -1) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      // Xóa TIMEOUT cũ
+      if (currentMatch.turnTimeout) clearTimeout(currentMatch.turnTimeout);
+
+      // Update board
+      this.Rooms[idRoom].match.at(-1)!.boards[x][y] = turn!;
+      this.Rooms[idRoom].match.at(-1)!.numMove =
+        this.Rooms[idRoom].match.at(-1)!.numMove + 1;
+
+      let top: Cell, bottom: Cell;
+      const n = this.Rooms[idRoom].match.at(-1)!.boards.length;
+
+      // Đường dọc
+      let line1 = 1;
+      top = { x: x, y: y };
+      bottom = { x: x, y: y };
+      for (let i = x - 1, j = y; i >= 0; i--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line1 = line1 + 1;
+          top = { x: i, y: j };
+        } else break;
+      }
+      for (let i = x + 1, j = y; i < n; i++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line1 = line1 + 1;
+          bottom = { x: i, y: j };
+        } else break;
+      }
+      if (line1 >= 5) {
+        lines.push({
+          typeLine: 1,
+          top: top,
+          bottom: bottom,
+        });
+      }
+
+      // // Đường ngang
+      let line2 = 1;
+      top = { x: x, y: y };
+      bottom = { x: x, y: y };
+      for (let i = x, j = y - 1; j >= 0; j--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line2 = line2 + 1;
+          top = { x: i, y: j };
+        } else break;
+      }
+      for (let i = x, j = y + 1; j < n; j++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line2 = line2 + 1;
+          bottom = { x: i, y: j };
+        } else break;
+      }
+      if (line2 >= 5) {
+        lines.push({
+          typeLine: 2,
+          top: top,
+          bottom: bottom,
+        });
+      }
+
+      // // Đường chéo huyền
+      let line3 = 1;
+      top = { x: x, y: y };
+      bottom = { x: x, y: y };
+      for (let i = x - 1, j = y - 1; i >= 0 && j >= 0; i--, j--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line3 = line3 + 1;
+          top = { x: i, y: j };
+        } else break;
+      }
+      for (let i = x + 1, j = y + 1; i < n && j < n; i++, j++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line3 = line3 + 1;
+          bottom = { x: i, y: j };
+        } else break;
+      }
+      if (line3 >= 5) {
+        lines.push({
+          typeLine: 3,
+          top: top,
+          bottom: bottom,
+        });
+      }
+
+      // // Đường chéo sắc
+      let line4 = 1;
+      top = { x: x, y: y };
+      bottom = { x: x, y: y };
+      for (let i = x - 1, j = y + 1; i >= 0 && j < n; i--, j++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line4 = line4 + 1;
+          top = { x: i, y: j };
+        } else break;
+      }
+      for (let i = x + 1, j = y - 1; i < n && j >= 0; i++, j--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line4 = line4 + 1;
+          bottom = { x: i, y: j };
+        } else break;
+      }
+      if (line4 >= 5) {
+        lines.push({
+          typeLine: 4,
+          top: top,
+          bottom: bottom,
+        });
+      }
+
+      if (lines.length > 0) {
+        this.Rooms[idRoom].match.at(-1)!.stateGame =
+          this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
+        const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
+        if (userTurn === 0) {
+          this.Rooms[idRoom].ratio[0].win++;
+          this.Rooms[idRoom].ratio[1].loose++;
+        } else {
+          this.Rooms[idRoom].ratio[1].win++;
+          this.Rooms[idRoom].ratio[0].loose++;
+        }
+        this.Rooms[idRoom].match.at(-1)!.lines = lines;
+
+        // Update match table in database
+        const currMatch = this.Rooms[idRoom].match.at(-1)!;
+        const idMatchUpdate = currMatch.id;
+        const user0Id = this.Rooms[idRoom].user[0].idUser;
+        const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
+        const winnerId = currMatch.userTurn === 0 ? user0Id : user1Id;
+        this.matchService.updateMatchResult(idMatchUpdate, winnerId, false);
+
+        // Update user stats
+        if (currMatch.userTurn === 0) {
+          this.usersService.updateUserStats(user0Id, 'WIN');
+          this.usersService.updateUserStats(user1Id, 'LOOSE');
+        } else {
+          this.usersService.updateUserStats(user0Id, 'LOOSE');
+          this.usersService.updateUserStats(user1Id, 'WIN');
+        }
+
+        return {
+          state: 'ENDGAME',
+          client1: {
+            idUser: this.Rooms[idRoom].user[0].idUser,
+            socket: this.Rooms[idRoom].user[0].socketUser,
+            result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
+          },
+          client2: {
+            idUser: this.Rooms[idRoom].user[1]!.idUser!,
+            socket: this.Rooms[idRoom].user[1]!.socketUser!,
+            result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
+          },
+          ratio: this.Rooms[idRoom].ratio,
+          lines: lines,
+          top: top,
+          bottom: bottom,
+          lastTurn: {
+            x: x,
+            y: y,
+          },
+        };
+      }
+
+      const currentBoard = this.Rooms[idRoom].match.at(-1)!.boards;
+      const totalCells = currentBoard.length * currentBoard.length;
+      const currentNumMove = this.Rooms[idRoom].match.at(-1)!.numMove;
+
+      // Hòa trận khi bàn cờ đã đầy và không có đường thắng
+      if (currentNumMove >= totalCells) {
+        this.Rooms[idRoom].match.at(-1)!.stateGame = 2;
+        this.Rooms[idRoom].match.at(-1)!.lines = [];
+        this.Rooms[idRoom].ratio[0].draw++;
+        this.Rooms[idRoom].ratio[1].draw++;
+
+        // Update match table in database
+        const currMatch = this.Rooms[idRoom].match.at(-1)!;
+        this.matchService.updateMatchResult(currMatch.id, null, true);
+
+        // Update user stats
+        const user0Id = this.Rooms[idRoom].user[0].idUser;
+        const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
+        this.usersService.updateUserStats(user0Id, 'DRAW');
+        this.usersService.updateUserStats(user1Id, 'DRAW');
+
+        return {
+          state: 'ENDGAME',
+          client1: {
+            idUser: this.Rooms[idRoom].user[0].idUser,
+            socket: this.Rooms[idRoom].user[0].socketUser,
+            result: 2,
+          },
+          client2: {
+            idUser: this.Rooms[idRoom].user[1]!.idUser!,
+            socket: this.Rooms[idRoom].user[1]!.socketUser!,
+            result: 2,
+          },
+          ratio: this.Rooms[idRoom].ratio,
+          lines: [],
+          lastTurn: {
+            x: x,
+            y: y,
+          },
+        };
+      }
+
+      // Đổi lượt chơi
+      this.Rooms[idRoom].match.at(-1)!.userTurn = 1 - turn!;
+
+      // SET TIMEOUT MỚI cho lượt tiếp theo
+      const now = Date.now();
+      currentMatch.turnTimeoutExpiresAt = now + this.TIME_LIMIT;
+
+      currentMatch.turnTimeout = setTimeout(() => {
+        this.handleTurnTimeout(idRoom, currentMatch, 'FRIEND');
+      }, this.TIME_LIMIT);
+
       return {
-        state: 'ERROR',
+        state: 'OK', // status: "OK" => Da di, "ERROR" => LOI
+        socketUser:
+          this.Rooms[idRoom].user[
+            this.Rooms[idRoom].match.at(-1)!.userTurn === 0 ? 0 : 1
+          ]?.socketUser,
+        x: x,
+        y: y,
+        turnDeadlineMs: currentMatch.turnTimeoutExpiresAt,
+      };
+    } else {
+      const idRoom = data.idRoom;
+      const idUser = data.idUser;
+      const x = data.x;
+      const y = data.y;
+      const lines: {
+        typeLine: number;
+        top: {
+          x: number;
+          y: number;
+        };
+        bottom: {
+          x: number;
+          y: number;
+        };
+      }[] = [];
+
+      // Check valid board
+      if (!this.Rooms[idRoom]) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      // Lấy trận đấu hiện tại
+      const currentMatch = this.Rooms[idRoom].match.at(-1)!;
+      if (currentMatch.stateGame !== -1) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      // Check valid user
+      const turn = currentMatch.userTurn;
+      if (this.Rooms[idRoom].user[turn === 0 ? 0 : 1]!.idUser != idUser) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      // Check valid move
+      if (this.Rooms[idRoom].match.at(-1)!.boards[x][y] !== -1) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      // Xóa TIMEOUT cũ
+      if (currentMatch.turnTimeout) clearTimeout(currentMatch.turnTimeout);
+
+      // Update board
+      this.Rooms[idRoom].match.at(-1)!.boards[x][y] = turn!;
+      this.Rooms[idRoom].match.at(-1)!.numMove =
+        this.Rooms[idRoom].match.at(-1)!.numMove + 1;
+
+      let top: Cell, bottom: Cell;
+      const n = this.Rooms[idRoom].match.at(-1)!.boards.length;
+
+      // Đường dọc
+      let line1 = 1;
+      top = { x: x, y: y };
+      bottom = { x: x, y: y };
+      for (let i = x - 1, j = y; i >= 0; i--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line1 = line1 + 1;
+          top = { x: i, y: j };
+        } else break;
+      }
+      for (let i = x + 1, j = y; i < n; i++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line1 = line1 + 1;
+          bottom = { x: i, y: j };
+        } else break;
+      }
+      if (line1 >= 5) {
+        lines.push({
+          typeLine: 1,
+          top: top,
+          bottom: bottom,
+        });
+      }
+
+      // // Đường ngang
+      let line2 = 1;
+      top = { x: x, y: y };
+      bottom = { x: x, y: y };
+      for (let i = x, j = y - 1; j >= 0; j--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line2 = line2 + 1;
+          top = { x: i, y: j };
+        } else break;
+      }
+      for (let i = x, j = y + 1; j < n; j++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line2 = line2 + 1;
+          bottom = { x: i, y: j };
+        } else break;
+      }
+      if (line2 >= 5) {
+        lines.push({
+          typeLine: 2,
+          top: top,
+          bottom: bottom,
+        });
+      }
+
+      // // Đường chéo huyền
+      let line3 = 1;
+      top = { x: x, y: y };
+      bottom = { x: x, y: y };
+      for (let i = x - 1, j = y - 1; i >= 0 && j >= 0; i--, j--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line3 = line3 + 1;
+          top = { x: i, y: j };
+        } else break;
+      }
+      for (let i = x + 1, j = y + 1; i < n && j < n; i++, j++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line3 = line3 + 1;
+          bottom = { x: i, y: j };
+        } else break;
+      }
+      if (line3 >= 5) {
+        lines.push({
+          typeLine: 3,
+          top: top,
+          bottom: bottom,
+        });
+      }
+
+      // // Đường chéo sắc
+      let line4 = 1;
+      top = { x: x, y: y };
+      bottom = { x: x, y: y };
+      for (let i = x - 1, j = y + 1; i >= 0 && j < n; i--, j++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line4 = line4 + 1;
+          top = { x: i, y: j };
+        } else break;
+      }
+      for (let i = x + 1, j = y - 1; i < n && j >= 0; i++, j--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
+          line4 = line4 + 1;
+          bottom = { x: i, y: j };
+        } else break;
+      }
+      if (line4 >= 5) {
+        lines.push({
+          typeLine: 4,
+          top: top,
+          bottom: bottom,
+        });
+      }
+
+      if (lines.length > 0) {
+        this.Rooms[idRoom].match.at(-1)!.stateGame =
+          this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
+        const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
+        if (userTurn === 0) {
+          this.Rooms[idRoom].ratio[0].win++;
+          this.Rooms[idRoom].ratio[1].loose++;
+        } else {
+          this.Rooms[idRoom].ratio[1].win++;
+          this.Rooms[idRoom].ratio[0].loose++;
+        }
+        this.Rooms[idRoom].match.at(-1)!.lines = lines;
+
+        // Update match table in database
+        const currMatch = this.Rooms[idRoom].match.at(-1)!;
+        const idMatchUpdate = currMatch.id;
+        const user0Id = this.Rooms[idRoom].user[0].idUser;
+        const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
+        const winnerId = currMatch.userTurn === 0 ? user0Id : user1Id;
+        const isAiWin = currMatch.userTurn === 0 ? false : true;
+        this.matchService.updateMatchResult(
+          idMatchUpdate,
+          winnerId,
+          false,
+          isAiWin,
+        );
+
+        // Update user stats
+        if (currMatch.userTurn === 0) {
+          this.usersService.updateUserStats(user0Id, 'WIN');
+        } else {
+          this.usersService.updateUserStats(user0Id, 'LOOSE');
+        }
+
+        return {
+          state: 'ENDGAME',
+          client1: {
+            idUser: this.Rooms[idRoom].user[0].idUser,
+            socket: this.Rooms[idRoom].user[0].socketUser,
+            result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
+          },
+          ratio: this.Rooms[idRoom].ratio,
+          lines: lines,
+          top: top,
+          bottom: bottom,
+          lastTurn: {
+            x: x,
+            y: y,
+          },
+        };
+      }
+
+      const currentBoard = this.Rooms[idRoom].match.at(-1)!.boards;
+      const totalCells = currentBoard.length * currentBoard.length;
+      const currentNumMove = this.Rooms[idRoom].match.at(-1)!.numMove;
+
+      // Hòa trận khi bàn cờ đã đầy và không có đường thắng
+      if (currentNumMove >= totalCells) {
+        this.Rooms[idRoom].match.at(-1)!.stateGame = 2;
+        this.Rooms[idRoom].match.at(-1)!.lines = [];
+        this.Rooms[idRoom].ratio[0].draw++;
+
+        // Update match table in database
+        const currMatch = this.Rooms[idRoom].match.at(-1)!;
+        this.matchService.updateMatchResult(currMatch.id, null, true);
+
+        // Update user stats
+        const user0Id = this.Rooms[idRoom].user[0].idUser;
+        this.usersService.updateUserStats(user0Id, 'DRAW');
+
+        return {
+          state: 'ENDGAME',
+          client1: {
+            idUser: this.Rooms[idRoom].user[0].idUser,
+            socket: this.Rooms[idRoom].user[0].socketUser,
+            result: 2,
+          },
+          ratio: this.Rooms[idRoom].ratio,
+          lines: [],
+          lastTurn: {
+            x: x,
+            y: y,
+          },
+        };
+      }
+
+      await this.delay(500);
+
+      // ===== BOT MOVE =====
+      const botTurn = 1;
+
+      // Lấy nước đi bot (dùng lại hàm có sẵn)
+      const botMove = this.GetBestBotMove(
+        this.Rooms[idRoom].match.at(-1)!.boards,
+      );
+
+      // Đánh cờ cho bot
+      this.Rooms[idRoom].match.at(-1)!.boards[botMove.x][botMove.y] = botTurn;
+      this.Rooms[idRoom].match.at(-1)!.numMove++;
+
+      // ===== CHECK WIN CHO BOT =====
+      let botLines: {
+        typeLine: number;
+        top: { x: number; y: number };
+        bottom: { x: number; y: number };
+      }[] = [];
+
+      let topBot: Cell, bottomBot: Cell;
+      const nBot = this.Rooms[idRoom].match.at(-1)!.boards.length;
+
+      // Dọc
+      let l1 = 1;
+      topBot = { x: botMove.x, y: botMove.y };
+      bottomBot = { x: botMove.x, y: botMove.y };
+      for (let i = botMove.x - 1; i >= 0; i--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][botMove.y] === botTurn) {
+          l1++;
+          topBot = { x: i, y: botMove.y };
+        } else break;
+      }
+      for (let i = botMove.x + 1; i < nBot; i++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][botMove.y] === botTurn) {
+          l1++;
+          bottomBot = { x: i, y: botMove.y };
+        } else break;
+      }
+      if (l1 >= 5)
+        botLines.push({ typeLine: 1, top: topBot, bottom: bottomBot });
+
+      // Ngang
+      let l2 = 1;
+      topBot = { x: botMove.x, y: botMove.y };
+      bottomBot = { x: botMove.x, y: botMove.y };
+      for (let j = botMove.y - 1; j >= 0; j--) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[botMove.x][j] === botTurn) {
+          l2++;
+          topBot = { x: botMove.x, y: j };
+        } else break;
+      }
+      for (let j = botMove.y + 1; j < nBot; j++) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[botMove.x][j] === botTurn) {
+          l2++;
+          bottomBot = { x: botMove.x, y: j };
+        } else break;
+      }
+      if (l2 >= 5)
+        botLines.push({ typeLine: 2, top: topBot, bottom: bottomBot });
+
+      // Chéo \
+      let l3 = 1;
+      topBot = { x: botMove.x, y: botMove.y };
+      bottomBot = { x: botMove.x, y: botMove.y };
+      for (
+        let i = botMove.x - 1, j = botMove.y - 1;
+        i >= 0 && j >= 0;
+        i--, j--
+      ) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === botTurn) {
+          l3++;
+          topBot = { x: i, y: j };
+        } else break;
+      }
+      for (
+        let i = botMove.x + 1, j = botMove.y + 1;
+        i < nBot && j < nBot;
+        i++, j++
+      ) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === botTurn) {
+          l3++;
+          bottomBot = { x: i, y: j };
+        } else break;
+      }
+      if (l3 >= 5)
+        botLines.push({ typeLine: 3, top: topBot, bottom: bottomBot });
+
+      // Chéo /
+      let l4 = 1;
+      topBot = { x: botMove.x, y: botMove.y };
+      bottomBot = { x: botMove.x, y: botMove.y };
+      for (
+        let i = botMove.x - 1, j = botMove.y + 1;
+        i >= 0 && j < nBot;
+        i--, j++
+      ) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === botTurn) {
+          l4++;
+          topBot = { x: i, y: j };
+        } else break;
+      }
+      for (
+        let i = botMove.x + 1, j = botMove.y - 1;
+        i < nBot && j >= 0;
+        i++, j--
+      ) {
+        if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === botTurn) {
+          l4++;
+          bottomBot = { x: i, y: j };
+        } else break;
+      }
+      if (l4 >= 5)
+        botLines.push({ typeLine: 4, top: topBot, bottom: bottomBot });
+
+      // ===== BOT WIN =====
+      if (botLines.length > 0) {
+        this.Rooms[idRoom].match.at(-1)!.stateGame = 1;
+        this.Rooms[idRoom].ratio[0].loose++;
+        this.Rooms[idRoom].ratio[1].win++;
+
+        const currMatch = this.Rooms[idRoom].match.at(-1)!;
+        this.matchService.updateMatchResult(currMatch.id, null, false, true);
+
+        const user0Id = this.Rooms[idRoom].user[0].idUser;
+        this.usersService.updateUserStats(user0Id, 'LOOSE');
+
+        return {
+          state: 'ENDGAME',
+          client1: {
+            idUser: user0Id,
+            socket: this.Rooms[idRoom].user[0].socketUser,
+            result: 1,
+          },
+          ratio: this.Rooms[idRoom].ratio,
+          lines: botLines,
+          lastTurn: {
+            x: botMove.x,
+            y: botMove.y,
+          },
+        };
+      }
+
+      // ===== CHECK HÒA SAU BOT =====
+      const totalCellsBot = nBot * nBot;
+      if (this.Rooms[idRoom].match.at(-1)!.numMove >= totalCellsBot) {
+        this.Rooms[idRoom].match.at(-1)!.stateGame = 2;
+        this.Rooms[idRoom].ratio[0].draw++;
+        this.Rooms[idRoom].ratio[1].draw++;
+
+        const currMatch = this.Rooms[idRoom].match.at(-1)!;
+        this.matchService.updateMatchResult(currMatch.id, null, true);
+
+        const user0Id = this.Rooms[idRoom].user[0].idUser;
+        this.usersService.updateUserStats(user0Id, 'DRAW');
+
+        return {
+          state: 'ENDGAME',
+          client1: {
+            idUser: user0Id,
+            socket: this.Rooms[idRoom].user[0].socketUser,
+            result: 2,
+          },
+          ratio: this.Rooms[idRoom].ratio,
+          lines: [],
+          lastTurn: {
+            x: botMove.x,
+            y: botMove.y,
+          },
+        };
+      }
+
+      // Trả lượt lại cho player
+      this.Rooms[idRoom].match.at(-1)!.userTurn = 0;
+
+      // SET TIMEOUT MỚI cho lượt tiếp theo
+      const now = Date.now();
+      currentMatch.turnTimeoutExpiresAt = now + this.TIME_LIMIT;
+
+      currentMatch.turnTimeout = setTimeout(() => {
+        this.handleTurnTimeout(idRoom, currentMatch, 'AI');
+      }, this.TIME_LIMIT);
+
+      return {
+        state: 'OK', // status: "OK" => Da di, "ERROR" => LOI
+        socketUser:
+          this.Rooms[idRoom].user[
+            this.Rooms[idRoom].match.at(-1)!.userTurn === 0 ? 0 : 1
+          ]?.socketUser,
+        x: botMove.x,
+        y: botMove.y,
+        turnDeadlineMs: currentMatch.turnTimeoutExpiresAt,
       };
     }
   }
 
-  RequestOnMove(data: RequestOnMove): ResponseOnMovePosition {
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async StartGameWithBot(
+    data: RequestPlayWithBotType,
+  ): Promise<ResponseStartGameWithBotType> {
+    try {
+      const roomDB =
+        await this.matchesPlayerService.createMatchesPlayerOnlyUser1(
+          data.idUser,
+          false,
+          'AI',
+        );
+      const idRoom = roomDB.id;
+      const boardSize = await this.getBoardSize();
+      const matchDB = await this.matchService.createMatch(idRoom);
+
+      this.BotRooms[idRoom] = {
+        user: {
+          idUser: data.idUser,
+          socket: data.socketUser,
+        },
+        match: {
+          id: matchDB.id,
+          userTurn: 0,
+          userX: 0,
+          numMove: 0,
+          board: Array.from({ length: boardSize }, () =>
+            Array.from({ length: boardSize }, () => -1),
+          ),
+          stateGame: -1,
+          lines: [],
+        },
+        ratio: { win: 0, loose: 0, draw: 0 },
+      };
+
+      const room = this.BotRooms[idRoom];
+      room.match.turnTimeoutExpiresAt = Date.now() + this.TIME_LIMIT;
+      room.match.turnTimeout = setTimeout(() => {
+        this.handleBotTurnTimeout(idRoom, room.match.id);
+      }, this.TIME_LIMIT);
+
+      return {
+        state: 'PLAY',
+        idRoom,
+        yourTurn: true,
+        yourX: true,
+        board: room.match.board,
+        stateGame: -1,
+        isUserReady: 0,
+        isYouReady: 0,
+        yourRation: room.ratio,
+        opponentRation: {
+          win: room.ratio.loose,
+          loose: room.ratio.win,
+          draw: room.ratio.draw,
+        },
+        turnDurationMs: this.TIME_LIMIT,
+        turnDeadlineMs: room.match.turnTimeoutExpiresAt,
+        boardSize: room.match.board.length,
+        lines: [],
+      };
+    } catch (error) {
+      return { state: 'ERROR', message: 'Failed to create game' };
+    }
+  }
+
+  async RequestStartGameWithBot(
+    data: RequestParamStartGameType,
+  ): Promise<ResponseStartGameWithBotType> {
     const idRoom = data.idRoom;
     const idUser = data.idUser;
-    const x = data.x;
-    const y = data.y;
 
-    // Check valid board
-    if (!this.Rooms[idRoom]) {
+    if (
+      !this.BotRooms[idRoom] ||
+      this.BotRooms[idRoom].user.idUser !== idUser
+    ) {
+      return { state: 'ERROR', message: 'Bot room not found or unauthorized' };
+    }
+
+    const room = this.BotRooms[idRoom];
+    room.user.socket = data.socketUser;
+
+    return {
+      state: 'LOAD',
+      idRoom,
+      yourTurn: room.match.userTurn === 0,
+      yourX: room.match.userX === 0,
+      board: room.match.board,
+      stateGame: room.match.stateGame,
+      isUserReady: 0,
+      isYouReady: 0,
+      yourRation: room.ratio,
+      opponentRation: {
+        win: room.ratio.loose,
+        loose: room.ratio.win,
+        draw: room.ratio.draw,
+      },
+      turnDurationMs: this.TIME_LIMIT,
+      turnDeadlineMs: room.match.turnTimeoutExpiresAt,
+      boardSize: room.match.board.length,
+      lines: room.match.lines,
+    };
+  }
+
+  async RequestOnMoveWithBot(
+    data: RequestOnMoveWithBot,
+  ): Promise<ResponseOnMoveWithBotType & { lines?: any[] }> {
+    const room = this.BotRooms[data.idRoom];
+    if (
+      !room ||
+      room.user.idUser !== data.idUser ||
+      room.match.stateGame !== -1
+    ) {
+      return { state: 'ERROR' };
+    }
+
+    if (room.match.userTurn !== 0) return { state: 'ERROR' };
+
+    const boardSize = room.match.board.length;
+    if (
+      data.x < 0 ||
+      data.x >= boardSize ||
+      data.y < 0 ||
+      data.y >= boardSize ||
+      room.match.board[data.x][data.y] !== -1
+    ) {
+      return { state: 'ERROR' };
+    }
+
+    if (room.match.turnTimeout) clearTimeout(room.match.turnTimeout);
+
+    room.match.board[data.x][data.y] = 0;
+    room.match.numMove++;
+
+    let lines = this.GetWinningLines(room.match.board, data.x, data.y, 0);
+    if (lines.length > 0) {
+      room.match.stateGame = 0;
+      room.match.lines = lines;
+      room.ratio.win++;
+      this.matchService.updateMatchResult(
+        room.match.id,
+        room.user.idUser,
+        false,
+      );
+      this.usersService.updateUserStats(room.user.idUser, 'WIN');
       return {
-        state: 'ERROR',
+        state: 'ENDGAME',
+        result: 0,
+        lastTurn: { x: data.x, y: data.y },
+        lines,
+        yourTurn: false,
       };
     }
 
-    // Check valid user
-    const turn = this.Rooms[idRoom].match.at(-1)?.userTurn;
-    if (this.Rooms[idRoom].user[turn === 0 ? 0 : 1]!.idUser != idUser) {
+    if (room.match.numMove >= boardSize * boardSize) {
+      room.match.stateGame = 2;
+      room.ratio.draw++;
+      this.matchService.updateMatchResult(room.match.id, null, true);
+      this.usersService.updateUserStats(room.user.idUser, 'DRAW');
       return {
-        state: 'ERROR',
+        state: 'ENDGAME',
+        result: 2,
+        lastTurn: { x: data.x, y: data.y },
+        yourTurn: false,
       };
     }
 
-    // Check valid move
-    if (this.Rooms[idRoom].match.at(-1)!.boards[x][y] !== -1) {
+    room.match.userTurn = 1;
+    const botMove = this.GetBestBotMove(room.match.board);
+    room.match.board[botMove.x][botMove.y] = 1;
+    room.match.numMove++;
+
+    lines = this.GetWinningLines(room.match.board, botMove.x, botMove.y, 1);
+    if (lines.length > 0) {
+      room.match.stateGame = 1;
+      room.match.lines = lines;
+      room.ratio.loose++;
+      this.matchService.updateMatchResult(room.match.id, null, false, true);
+      this.usersService.updateUserStats(room.user.idUser, 'LOOSE');
       return {
-        state: 'ERROR',
+        state: 'ENDGAME',
+        result: 1,
+        lastTurn: { x: botMove.x, y: botMove.y },
+        lines,
+        yourTurn: false,
       };
     }
 
-    // Update board
-    this.Rooms[idRoom].match.at(-1)!.boards[x][y] = turn!;
+    if (room.match.numMove >= boardSize * boardSize) {
+      room.match.stateGame = 2;
+      room.ratio.draw++;
+      this.matchService.updateMatchResult(room.match.id, null, true);
+      this.usersService.updateUserStats(room.user.idUser, 'DRAW');
+      return {
+        state: 'ENDGAME',
+        result: 2,
+        lastTurn: { x: botMove.x, y: botMove.y },
+        yourTurn: false,
+      };
+    }
 
+    room.match.userTurn = 0;
+    room.match.turnTimeoutExpiresAt = Date.now() + this.TIME_LIMIT;
+    room.match.turnTimeout = setTimeout(() => {
+      this.handleBotTurnTimeout(data.idRoom, room.match.id);
+    }, this.TIME_LIMIT);
+
+    const response = {
+      state: 'OK' as const,
+      x: botMove.x,
+      y: botMove.y,
+      yourTurn: true,
+      turnDeadlineMs: room.match.turnTimeoutExpiresAt,
+    };
+    return response;
+  }
+
+  async RequestPlayagainWithBot(
+    data: RequestParamStartGameType,
+  ): Promise<ResponseStartGameWithBotType> {
+    const idRoom = data.idRoom;
+    const idUser = data.idUser;
+
+    if (
+      !this.BotRooms[idRoom] ||
+      this.BotRooms[idRoom].user.idUser !== idUser
+    ) {
+      return { state: 'ERROR', message: 'Bot room not found' };
+    }
+
+    const room = this.BotRooms[idRoom];
+    if (room.match.turnTimeout) clearTimeout(room.match.turnTimeout);
+
+    const boardSize = await this.getBoardSize();
+    const matchDB = await this.matchService.createMatch(idRoom);
+
+    const totalGames = room.ratio.win + room.ratio.loose + room.ratio.draw;
+    const botGoesFirst = totalGames % 2 === 1;
+
+    room.match = {
+      id: matchDB.id,
+      userTurn: botGoesFirst ? 1 : 0,
+      userX: 0,
+      numMove: 0,
+      board: Array.from({ length: boardSize }, () =>
+        Array.from({ length: boardSize }, () => -1),
+      ),
+      stateGame: -1,
+      lines: [],
+    };
+
+    if (botGoesFirst) {
+      const botMove = this.GetBestBotMove(room.match.board);
+      room.match.board[botMove.x][botMove.y] = 1;
+      room.match.numMove++;
+      room.match.userTurn = 0; // Đổi lại cho user
+    }
+
+    room.match.turnTimeoutExpiresAt = Date.now() + this.TIME_LIMIT;
+    room.match.turnTimeout = setTimeout(() => {
+      this.handleBotTurnTimeout(idRoom, room.match.id);
+    }, this.TIME_LIMIT);
+
+    return {
+      state: 'PLAY',
+      idRoom,
+      yourTurn: true,
+      yourX: true,
+      board: room.match.board,
+      stateGame: -1,
+      isUserReady: 0,
+      isYouReady: 0,
+      yourRation: room.ratio,
+      opponentRation: {
+        win: room.ratio.loose,
+        loose: room.ratio.win,
+        draw: room.ratio.draw,
+      },
+      turnDurationMs: this.TIME_LIMIT,
+      turnDeadlineMs: room.match.turnTimeoutExpiresAt,
+      boardSize: boardSize,
+      lines: [],
+    };
+  }
+
+  private handleBotTurnTimeout(idRoom: string, idMatch: string) {
+    const room = this.BotRooms[idRoom];
+    if (!room || room.match.stateGame !== -1 || room.match.id !== idMatch)
+      return;
+
+    if (room.match.userTurn === 0) {
+      room.match.stateGame = 1;
+      room.ratio.loose++;
+      this.matchService.updateMatchResult(room.match.id, null, false, true);
+      this.usersService.updateUserStats(room.user.idUser, 'LOOSE');
+
+      room.user.socket.emit('response-on-move-with-bot', {
+        state: 'ENDGAME',
+        result: 1, // User lose
+        lines: [],
+      });
+    }
+  }
+
+  private GetWinningLines(
+    board: number[][],
+    x: number,
+    y: number,
+    type: 0 | 1,
+  ): any[] {
+    const lines: any[] = [];
+    const n = board.length;
     let top: Cell, bottom: Cell;
-    const n = this.Rooms[idRoom].match.at(-1)!.boards.length;
 
     // Đường dọc
     let line1 = 1;
     top = { x: x, y: y };
     bottom = { x: x, y: y };
     for (let i = x - 1, j = y; i >= 0; i--) {
-      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
-        line1 = line1 + 1;
+      if (board[i][j] === type) {
+        line1++;
         top = { x: i, y: j };
       } else break;
     }
     for (let i = x + 1, j = y; i < n; i++) {
-      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
-        line1 = line1 + 1;
+      if (board[i][j] === type) {
+        line1++;
         bottom = { x: i, y: j };
       } else break;
     }
-    if (line1 >= 5) {
-      this.Rooms[idRoom].match.at(-1)!.stateGame =
-        this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
-      const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
-      if (userTurn === 0) {
-        this.Rooms[idRoom].ratio[0].win++;
-        this.Rooms[idRoom].ratio[1].loose++;
-      } else {
-        this.Rooms[idRoom].ratio[1].win++;
-        this.Rooms[idRoom].ratio[0].loose++;
-      }
-      return {
-        state: 'ENDGAME',
-        client1: {
-          idUser: this.Rooms[idRoom].user[0].idUser,
-          socket: this.Rooms[idRoom].user[0].socketUser,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: this.Rooms[idRoom].user[1]!.idUser!,
-          socket: this.Rooms[idRoom].user[1]!.socketUser!,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        ratio: this.Rooms[idRoom].ratio,
-        typeLine: 1,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: x,
-          y: y,
-        },
-      };
-    }
+    if (line1 >= 5) lines.push({ typeLine: 1, top, bottom });
 
-    // // Đường ngang
+    // Đường ngang
     let line2 = 1;
     top = { x: x, y: y };
     bottom = { x: x, y: y };
     for (let i = x, j = y - 1; j >= 0; j--) {
-      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
-        line2 = line2 + 1;
+      if (board[i][j] === type) {
+        line2++;
         top = { x: i, y: j };
       } else break;
     }
     for (let i = x, j = y + 1; j < n; j++) {
-      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
-        line2 = line2 + 1;
+      if (board[i][j] === type) {
+        line2++;
         bottom = { x: i, y: j };
       } else break;
     }
-    if (line2 >= 5) {
-      this.Rooms[idRoom].match.at(-1)!.stateGame =
-        this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
-      const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
-      if (userTurn === 0) {
-        this.Rooms[idRoom].ratio[0].win++;
-        this.Rooms[idRoom].ratio[1].loose++;
-      } else {
-        this.Rooms[idRoom].ratio[1].win++;
-        this.Rooms[idRoom].ratio[0].loose++;
-      }
-      return {
-        state: 'ENDGAME',
-        client1: {
-          idUser: this.Rooms[idRoom].user[0].idUser,
-          socket: this.Rooms[idRoom].user[0].socketUser,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: this.Rooms[idRoom].user[1]!.idUser!,
-          socket: this.Rooms[idRoom].user[1]!.socketUser!,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        ratio: this.Rooms[idRoom].ratio,
-        typeLine: 2,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: x,
-          y: y,
-        },
-      };
-    }
+    if (line2 >= 5) lines.push({ typeLine: 2, top, bottom });
 
-    // // Đường chéo huyền
+    // Đường chéo huyền
     let line3 = 1;
     top = { x: x, y: y };
     bottom = { x: x, y: y };
     for (let i = x - 1, j = y - 1; i >= 0 && j >= 0; i--, j--) {
-      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
-        line3 = line3 + 1;
+      if (board[i][j] === type) {
+        line3++;
         top = { x: i, y: j };
       } else break;
     }
     for (let i = x + 1, j = y + 1; i < n && j < n; i++, j++) {
-      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
-        line3 = line3 + 1;
+      if (board[i][j] === type) {
+        line3++;
         bottom = { x: i, y: j };
       } else break;
     }
-    if (line3 >= 5) {
-      this.Rooms[idRoom].match.at(-1)!.stateGame =
-        this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
-      const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
-      if (userTurn === 0) {
-        this.Rooms[idRoom].ratio[0].win++;
-        this.Rooms[idRoom].ratio[1].loose++;
-      } else {
-        this.Rooms[idRoom].ratio[1].win++;
-        this.Rooms[idRoom].ratio[0].loose++;
-      }
-      return {
-        state: 'ENDGAME',
-        client1: {
-          idUser: this.Rooms[idRoom].user[0].idUser,
-          socket: this.Rooms[idRoom].user[0].socketUser,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: this.Rooms[idRoom].user[1]!.idUser!,
-          socket: this.Rooms[idRoom].user[1]!.socketUser!,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        ratio: this.Rooms[idRoom].ratio,
-        typeLine: 3,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: x,
-          y: y,
-        },
-      };
-    }
+    if (line3 >= 5) lines.push({ typeLine: 3, top, bottom });
 
-    // // Đường chéo sắc
+    // Đường chéo sắc
     let line4 = 1;
     top = { x: x, y: y };
     bottom = { x: x, y: y };
     for (let i = x - 1, j = y + 1; i >= 0 && j < n; i--, j++) {
-      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
-        line4 = line4 + 1;
+      if (board[i][j] === type) {
+        line4++;
         top = { x: i, y: j };
       } else break;
     }
     for (let i = x + 1, j = y - 1; i < n && j >= 0; i++, j--) {
-      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === turn) {
-        line4 = line4 + 1;
+      if (board[i][j] === type) {
+        line4++;
         bottom = { x: i, y: j };
       } else break;
     }
-    if (line4 >= 5) {
-      this.Rooms[idRoom].match.at(-1)!.stateGame =
-        this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1;
-      const userTurn = this.Rooms[idRoom].match.at(-1)?.userTurn;
-      if (userTurn === 0) {
-        this.Rooms[idRoom].ratio[0].win++;
-        this.Rooms[idRoom].ratio[1].loose++;
-      } else {
-        this.Rooms[idRoom].ratio[1].win++;
-        this.Rooms[idRoom].ratio[0].loose++;
-      }
-      return {
-        state: 'ENDGAME',
-        client1: {
-          idUser: this.Rooms[idRoom].user[0].idUser,
-          socket: this.Rooms[idRoom].user[0].socketUser,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 0 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        client2: {
-          idUser: this.Rooms[idRoom].user[1]!.idUser!,
-          socket: this.Rooms[idRoom].user[1]!.socketUser!,
-          result: this.Rooms[idRoom].match.at(-1)?.userTurn === 1 ? 0 : 1, // 0 => Thắng, 1 => Thua, 2 => Hòa
-        },
-        ratio: this.Rooms[idRoom].ratio,
-        typeLine: 4,
-        top: top,
-        bottom: bottom,
-        lastTurn: {
-          x: x,
-          y: y,
-        },
-      };
-    }
+    if (line4 >= 5) lines.push({ typeLine: 4, top, bottom });
 
-    // Đổi lượt chơi
-    this.Rooms[idRoom].match.at(-1)!.userTurn = 1 - turn!;
-
-    return {
-      state: 'OK', // status: "OK" => Da di, "ERROR" => LOI
-      socketUser:
-        this.Rooms[idRoom].user[
-          this.Rooms[idRoom].match.at(-1)!.userTurn === 0 ? 0 : 1
-        ]?.socketUser,
-      x: x,
-      y: y,
-    };
+    return lines;
   }
 
-  RequestOutRoom(data: RequestStartGameType) {
+  public GetBestBotMove(board: number[][]): Cell {
+    const candidates = this.GetCandidateMoves(board);
+    for (const move of candidates) {
+      if (this.IsWinningMove(board, move.x, move.y, 1)) {
+        return move;
+      }
+    }
+
+    for (const move of candidates) {
+      if (this.IsWinningMove(board, move.x, move.y, 0)) {
+        return move;
+      }
+    }
+
+    let bestScore = -1;
+    let bestMove = candidates[0];
+    for (const move of candidates) {
+      const attackScore = this.EvaluateMove(board, move.x, move.y, 1);
+      const defendScore = this.EvaluateMove(board, move.x, move.y, 0);
+      const score = attackScore * 2 + defendScore;
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = move;
+      }
+    }
+    return bestMove;
+  }
+
+  private GetCandidateMoves(board: number[][]): Cell[] {
+    const n = board.length;
+    const set = new Set<string>();
+    const result: Cell[] = [];
+
+    let hasStone = false;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (board[i][j] !== -1) {
+          hasStone = true;
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = i + dx;
+              const ny = j + dy;
+              if (
+                nx >= 0 &&
+                nx < n &&
+                ny >= 0 &&
+                ny < n &&
+                board[nx][ny] === -1
+              ) {
+                const key = nx + ':' + ny;
+                if (!set.has(key)) {
+                  set.add(key);
+                  result.push({ x: nx, y: ny });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (!hasStone) {
+      const center = Math.floor(n / 2);
+      return [{ x: center, y: center }];
+    }
+
+    return result.length > 0
+      ? result
+      : [{ x: Math.floor(n / 2), y: Math.floor(n / 2) }];
+  }
+
+  private EvaluateMove(
+    board: number[][],
+    x: number,
+    y: number,
+    value: 0 | 1,
+  ): number {
+    if (board[x][y] !== -1) return -1;
+
+    const directions = [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [1, -1],
+    ];
+    let score = 0;
+
+    for (const [dx, dy] of directions) {
+      const left = this.CountInDirection(board, x, y, dx, dy, value);
+      const right = this.CountInDirection(board, x, y, -dx, -dy, value);
+      const total = left + right + 1;
+
+      const open1x = x + (left + 1) * dx;
+      const open1y = y + (left + 1) * dy;
+      const open2x = x - (right + 1) * dx;
+      const open2y = y - (right + 1) * dy;
+      const openEnds =
+        (this.IsEmptyCell(board, open1x, open1y) ? 1 : 0) +
+        (this.IsEmptyCell(board, open2x, open2y) ? 1 : 0);
+
+      score += this.GetPatternScore(total, openEnds);
+    }
+
+    return score;
+  }
+
+  private GetPatternScore(total: number, openEnds: number): number {
+    if (total >= 5) return 1000000;
+    if (total === 4 && openEnds === 2) return 200000;
+    if (total === 4 && openEnds === 1) return 50000;
+    if (total === 3 && openEnds === 2) return 12000;
+    if (total === 3 && openEnds === 1) return 3000;
+    if (total === 2 && openEnds === 2) return 600;
+    if (total === 2 && openEnds === 1) return 120;
+    return 10;
+  }
+
+  private CountInDirection(
+    board: number[][],
+    x: number,
+    y: number,
+    dx: number,
+    dy: number,
+    value: 0 | 1,
+  ): number {
+    let count = 0;
+    let nx = x + dx;
+    let ny = y + dy;
+    while (
+      nx >= 0 &&
+      nx < board.length &&
+      ny >= 0 &&
+      ny < board.length &&
+      board[nx][ny] === value
+    ) {
+      count++;
+      nx += dx;
+      ny += dy;
+    }
+    return count;
+  }
+
+  private IsEmptyCell(board: number[][], x: number, y: number): boolean {
+    return (
+      x >= 0 &&
+      x < board.length &&
+      y >= 0 &&
+      y < board.length &&
+      board[x][y] === -1
+    );
+  }
+
+  private IsWinningMove(
+    board: number[][],
+    x: number,
+    y: number,
+    value: 0 | 1,
+  ): boolean {
+    const directions = [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [1, -1],
+    ];
+
+    for (const [dx, dy] of directions) {
+      let line = 1;
+      line += this.CountInDirection(board, x, y, dx, dy, value);
+      line += this.CountInDirection(board, x, y, -dx, -dy, value);
+      if (line >= 5) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private IsBoardFull(board: number[][]): boolean {
+    for (let i = 0; i < board.length; i++) {
+      for (let j = 0; j < board.length; j++) {
+        if (board[i][j] === -1) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  async RequestOutRoom(data: RequestStartGameType, gameMode: string) {
     const idUser = data.idUser;
     const idRoom = data.idRoom;
 
@@ -664,6 +1748,28 @@ export class GameService {
         users: [],
       };
     }
+
+    if (gameMode == 'AI') {
+      // Trận đáu chưa kết thúc thì 1 thắng
+      if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1) {
+        const currMatch = this.Rooms[idRoom].match.at(-1)!;
+        const idMatchUpdate = currMatch.id;
+        this.Rooms[idRoom].match.at(-1)!.stateGame = 1;
+        const user0Id = this.Rooms[idRoom].user[0].idUser;
+
+        this.usersService.updateUserStats(user0Id, 'LOOSE');
+
+        // Update match table in database
+        this.matchService.updateMatchResult(idMatchUpdate, null, false, true);
+      }
+
+      // Xóa phòng chơi
+      delete this.Rooms[idRoom];
+      return {
+        users: [],
+      };
+    }
+
     // Chỉ có user 0
     if (!this.Rooms[idRoom].user[1]) {
       if (this.Rooms[idRoom].user[0].idUser === idUser) {
@@ -673,6 +1779,7 @@ export class GameService {
         users: [],
       };
     }
+
     // Có u0 và u1
     else {
       if (
@@ -686,18 +1793,43 @@ export class GameService {
         // Không phải người out room
         if (this.Rooms[idRoom].user[0].idUser !== idUser) {
           // Trận đáu chưa kết thúc thì 0 thắng
-          if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1)
+          if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1) {
+            const currMatch = this.Rooms[idRoom].match.at(-1)!;
+            const idMatchUpdate = currMatch.id;
             this.Rooms[idRoom].match.at(-1)!.stateGame = 0;
+            const user0Id = this.Rooms[idRoom].user[0].idUser;
+            const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
+            this.usersService.updateUserStats(user0Id, 'WIN');
+            this.usersService.updateUserStats(user1Id, 'LOOSE');
+
+            // Update match table in database
+            this.matchService.updateMatchResult(idMatchUpdate, user0Id, false);
+          }
+
           const socketUser = this.Rooms[idRoom].user[0].socketUser;
+          // Xóa phòng chơi
           delete this.Rooms[idRoom];
           return {
             users: [socketUser],
           };
         } else {
           // Trận đáu chưa kết thúc thì 1 thắng
-          if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1)
+          if (this.Rooms[idRoom].match.at(-1)?.stateGame === -1) {
+            const currMatch = this.Rooms[idRoom].match.at(-1)!;
+            const idMatchUpdate = currMatch.id;
             this.Rooms[idRoom].match.at(-1)!.stateGame = 1;
-          const socketUser = this.Rooms[idRoom].user[1].socketUser;
+            const user0Id = this.Rooms[idRoom].user[0].idUser;
+            const user1Id = this.Rooms[idRoom].user[1]!.idUser!;
+
+            this.usersService.updateUserStats(user0Id, 'LOOSE');
+            this.usersService.updateUserStats(user1Id, 'WIN');
+
+            // Update match table in database
+            this.matchService.updateMatchResult(idMatchUpdate, user1Id, false);
+          }
+
+          const socketUser = this.Rooms[idRoom].user[1]!.socketUser;
+          // Xóa phòng chơi
           delete this.Rooms[idRoom];
           return {
             users: [socketUser],
@@ -707,7 +1839,10 @@ export class GameService {
     }
   }
 
-  async RequestPlayagain(data: RequestStartGameType): Promise<{
+  async RequestPlayagain(
+    data: RequestStartGameType,
+    gameMode: string,
+  ): Promise<{
     state: string;
     user?: {
       0: {
@@ -727,9 +1862,11 @@ export class GameService {
       stateGame: number;
       isU0Ready: number;
       isU1Ready: number;
+      turnTimeoutExpiresAt?: number;
     };
     userTurn?: 0 | 1;
     userX?: 0 | 1;
+    numMove?: number;
     socket?: Socket;
     ratio?: {
       0: {
@@ -744,82 +1881,381 @@ export class GameService {
       };
     };
   }> {
-    const idUser = data.idUser;
-    const idRoom = data.idRoom;
+    if (gameMode == 'FRIEND' || gameMode == 'ONLINE') {
+      const idUser = data.idUser;
+      const idRoom = data.idRoom;
 
-    if (!this.Rooms[idRoom]) {
-      return {
-        state: 'ERROR',
-      };
-    }
-    // Mặc định luôn có idUser
-    if (!this.Rooms[idRoom].user[1]) {
-      return {
-        state: 'ERROR',
-      };
-    }
-    // Có u0 và u1
-    else {
-      if (
-        this.Rooms[idRoom].user[0].idUser !== idUser &&
-        this.Rooms[idRoom].user[1].idUser !== idUser
-      ) {
+      if (!this.Rooms[idRoom]) {
         return {
           state: 'ERROR',
         };
-      } else {
-        // Nếu người gửi là user0
-        if (this.Rooms[idRoom].user[0].idUser === idUser)
-          this.Rooms[idRoom].match.at(-1)!.isU0Ready = 1;
-        // Nếu người gửi là user1
-        else if (this.Rooms[idRoom].user[1].idUser === idUser)
-          this.Rooms[idRoom].match.at(-1)!.isU1Ready = 1;
-
-        // Nếu cả 2 cùng accept
+      }
+      // Mặc định luôn có idUser
+      if (!this.Rooms[idRoom].user[1]) {
+        return {
+          state: 'ERROR',
+        };
+      }
+      // Có u0 và u1
+      else {
         if (
-          this.Rooms[idRoom].match.at(-1)!.isU0Ready === 1 &&
-          this.Rooms[idRoom].match.at(-1)!.isU1Ready === 1
-        )
-          return await this.CreateNewMatch(idRoom);
-        // Nếu chỉ mới có 1 accept
-        if (this.Rooms[idRoom].match.at(-1)!.isU0Ready === 1) {
+          this.Rooms[idRoom].user[0].idUser !== idUser &&
+          this.Rooms[idRoom].user[1].idUser !== idUser
+        ) {
           return {
-            state: 'ALERT',
-            socket: this.Rooms[idRoom].user[1].socketUser,
+            state: 'ERROR',
           };
         } else {
-          return {
-            state: 'ALERT',
-            socket: this.Rooms[idRoom].user[0].socketUser,
-          };
+          // Nếu người gửi là user0
+          if (this.Rooms[idRoom].user[0].idUser === idUser)
+            this.Rooms[idRoom].match.at(-1)!.isU0Ready = 1;
+          // Nếu người gửi là user1
+          else if (this.Rooms[idRoom].user[1].idUser === idUser)
+            this.Rooms[idRoom].match.at(-1)!.isU1Ready = 1;
+
+          // Nếu cả 2 cùng accept
+          if (
+            this.Rooms[idRoom].match.at(-1)!.isU0Ready === 1 &&
+            this.Rooms[idRoom].match.at(-1)!.isU1Ready === 1
+          )
+            return await this.CreateNewMatch(idRoom, gameMode);
+          // Nếu chỉ mới có 1 accept
+          if (this.Rooms[idRoom].match.at(-1)!.isU0Ready === 1) {
+            return {
+              state: 'ALERT',
+              socket: this.Rooms[idRoom].user[1].socketUser,
+            };
+          } else {
+            return {
+              state: 'ALERT',
+              socket: this.Rooms[idRoom].user[0].socketUser,
+            };
+          }
         }
       }
+    } else {
+      const idRoom = data.idRoom;
+
+      if (!this.Rooms[idRoom]) {
+        return {
+          state: 'ERROR',
+        };
+      }
+
+      this.Rooms[idRoom].match.at(-1)!.isU0Ready = 1;
+      return await this.CreateNewMatch(idRoom, gameMode);
     }
   }
 
-  async CreateNewMatch(idRoom: string) {
+  async CreateNewMatch(idRoom: string, gameMode: string) {
+    const room = this.Rooms[idRoom];
+    if (!room) throw new Error('Room not found');
+
+    const boardSize = await this.getBoardSize();
     const match = await this.matchService.createMatch(idRoom);
     const turn: 0 | 1 = Math.floor(Math.random() * 2) as 0 | 1;
 
-    this.Rooms[idRoom].match.push({
+    const now = Date.now();
+
+    const newMatch = {
       id: match.id,
       userTurn: turn,
       userX: turn,
-      boards: Array.from({ length: 16 }, () =>
-        Array.from({ length: 16 }, () => -1),
+      numMove: 0,
+      boards: Array.from({ length: boardSize }, () =>
+        Array.from({ length: boardSize }, () => -1),
       ),
+      lines: [],
       stateGame: -1,
       isU0Ready: 0,
       isU1Ready: 0,
-    });
+
+      // Timeout
+      turnTimeoutExpiresAt: now + this.TIME_LIMIT,
+      turnTimeout: undefined as NodeJS.Timeout | undefined,
+    };
+
+    // Set timeout
+    newMatch.turnTimeout = setTimeout(() => {
+      this.handleTurnTimeout(idRoom, newMatch, gameMode);
+    }, this.TIME_LIMIT);
+
+    room.match.push(newMatch);
 
     return {
       state: 'PLAY',
       user: this.Rooms[idRoom].user,
       match: this.Rooms[idRoom].match.at(-1)!,
       ratio: this.Rooms[idRoom].ratio,
-      userTurn: turn,
-      userX: turn,
+      userTurn: turn, // Ai đi trước
+      userX: turn, // Ai là X
+      numMove: 0, // Số lượt đánh
+    };
+  }
+
+  private async handleTurnTimeout(
+    idRoom: string,
+    match: MatchType,
+    gameMode: string,
+  ) {
+    if (gameMode == 'FRIEND') {
+      if (match.stateGame !== -1) return;
+
+      const room = this.Rooms[idRoom];
+      if (!room) return;
+
+      // Người thua
+      const loser = match.userTurn;
+      // Người thắng
+      const winner = 1 - loser;
+
+      // Update người thắng
+      match.stateGame = winner;
+
+      // Update ratio
+      room.ratio[winner].win++;
+      room.ratio[loser].loose++;
+
+      // Update DB
+      const winnerId = room.user[winner].idUser;
+      this.matchService.updateMatchResult(match.id, winnerId, false);
+
+      // Update user stats
+      const userWinnerId = room.user[winner].idUser;
+      const userLoserId = room.user[loser]!.idUser!;
+      this.usersService.updateUserStats(userWinnerId, 'WIN');
+      this.usersService.updateUserStats(userLoserId, 'LOOSE');
+
+      // Emit kết quả về client
+      const socketWinner = room.user[winner].socketUser;
+      const socketLoser = room.user[loser]!.socketUser;
+
+      socketWinner.emit('response-on-move', {
+        state: 'TIMEOUT',
+        result: 0,
+        yourRation: room.ratio[winner],
+        opponentRation: room.ratio[loser],
+      });
+
+      socketLoser!.emit('response-on-move', {
+        state: 'TIMEOUT',
+        result: 1,
+        yourRation: room.ratio[winner],
+        opponentRation: room.ratio[loser],
+      });
+    } else {
+      if (match.stateGame !== -1) return;
+
+      const room = this.Rooms[idRoom];
+      if (!room) return;
+
+      // Update ratio
+      room.ratio[1].win++;
+      room.ratio[0].loose++;
+
+      // Update DB
+      this.matchService.updateMatchResult(match.id, null, false, true);
+
+      // Update user stats
+      this.usersService.updateUserStats(room.user[0].idUser, 'LOOSE');
+
+      // Emit kết quả về client
+      const socketLoser = room.user[0].socketUser;
+
+      socketLoser!.emit('response-on-move', {
+        state: 'TIMEOUT',
+        result: 1,
+        yourRation: room.ratio[0],
+        opponentRation: room.ratio[1],
+      });
+    }
+  }
+
+  public async process_ai_first_move(idRoom) {
+    await this.delay(500);
+
+    // ===== BOT MOVE =====
+    const botTurn = 1;
+
+    // Lấy nước đi bot (dùng lại hàm có sẵn)
+    const botMove = this.GetBestBotMove(
+      this.Rooms[idRoom].match.at(-1)!.boards,
+    );
+
+    // Đánh cờ cho bot
+    this.Rooms[idRoom].match.at(-1)!.boards[botMove.x][botMove.y] = botTurn;
+    this.Rooms[idRoom].match.at(-1)!.numMove++;
+
+    // ===== CHECK WIN CHO BOT =====
+    let botLines: {
+      typeLine: number;
+      top: { x: number; y: number };
+      bottom: { x: number; y: number };
+    }[] = [];
+
+    let topBot: Cell, bottomBot: Cell;
+    const nBot = this.Rooms[idRoom].match.at(-1)!.boards.length;
+
+    // Dọc
+    let l1 = 1;
+    topBot = { x: botMove.x, y: botMove.y };
+    bottomBot = { x: botMove.x, y: botMove.y };
+    for (let i = botMove.x - 1; i >= 0; i--) {
+      if (this.Rooms[idRoom].match.at(-1)!.boards[i][botMove.y] === botTurn) {
+        l1++;
+        topBot = { x: i, y: botMove.y };
+      } else break;
+    }
+    for (let i = botMove.x + 1; i < nBot; i++) {
+      if (this.Rooms[idRoom].match.at(-1)!.boards[i][botMove.y] === botTurn) {
+        l1++;
+        bottomBot = { x: i, y: botMove.y };
+      } else break;
+    }
+    if (l1 >= 5) botLines.push({ typeLine: 1, top: topBot, bottom: bottomBot });
+
+    // Ngang
+    let l2 = 1;
+    topBot = { x: botMove.x, y: botMove.y };
+    bottomBot = { x: botMove.x, y: botMove.y };
+    for (let j = botMove.y - 1; j >= 0; j--) {
+      if (this.Rooms[idRoom].match.at(-1)!.boards[botMove.x][j] === botTurn) {
+        l2++;
+        topBot = { x: botMove.x, y: j };
+      } else break;
+    }
+    for (let j = botMove.y + 1; j < nBot; j++) {
+      if (this.Rooms[idRoom].match.at(-1)!.boards[botMove.x][j] === botTurn) {
+        l2++;
+        bottomBot = { x: botMove.x, y: j };
+      } else break;
+    }
+    if (l2 >= 5) botLines.push({ typeLine: 2, top: topBot, bottom: bottomBot });
+
+    // Chéo \
+    let l3 = 1;
+    topBot = { x: botMove.x, y: botMove.y };
+    bottomBot = { x: botMove.x, y: botMove.y };
+    for (let i = botMove.x - 1, j = botMove.y - 1; i >= 0 && j >= 0; i--, j--) {
+      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === botTurn) {
+        l3++;
+        topBot = { x: i, y: j };
+      } else break;
+    }
+    for (
+      let i = botMove.x + 1, j = botMove.y + 1;
+      i < nBot && j < nBot;
+      i++, j++
+    ) {
+      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === botTurn) {
+        l3++;
+        bottomBot = { x: i, y: j };
+      } else break;
+    }
+    if (l3 >= 5) botLines.push({ typeLine: 3, top: topBot, bottom: bottomBot });
+
+    // Chéo /
+    let l4 = 1;
+    topBot = { x: botMove.x, y: botMove.y };
+    bottomBot = { x: botMove.x, y: botMove.y };
+    for (
+      let i = botMove.x - 1, j = botMove.y + 1;
+      i >= 0 && j < nBot;
+      i--, j++
+    ) {
+      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === botTurn) {
+        l4++;
+        topBot = { x: i, y: j };
+      } else break;
+    }
+    for (
+      let i = botMove.x + 1, j = botMove.y - 1;
+      i < nBot && j >= 0;
+      i++, j--
+    ) {
+      if (this.Rooms[idRoom].match.at(-1)!.boards[i][j] === botTurn) {
+        l4++;
+        bottomBot = { x: i, y: j };
+      } else break;
+    }
+    if (l4 >= 5) botLines.push({ typeLine: 4, top: topBot, bottom: bottomBot });
+
+    // ===== BOT WIN =====
+    if (botLines.length > 0) {
+      this.Rooms[idRoom].match.at(-1)!.stateGame = 1;
+      this.Rooms[idRoom].ratio[0].loose++;
+
+      const currMatch = this.Rooms[idRoom].match.at(-1)!;
+      this.matchService.updateMatchResult(currMatch.id, null, false, true);
+
+      const user0Id = this.Rooms[idRoom].user[0].idUser;
+      this.usersService.updateUserStats(user0Id, 'LOOSE');
+
+      return {
+        state: 'ENDGAME',
+        client1: {
+          idUser: user0Id,
+          socket: this.Rooms[idRoom].user[0].socketUser,
+          result: 1,
+        },
+        ratio: this.Rooms[idRoom].ratio,
+        lines: botLines,
+        lastTurn: {
+          x: botMove.x,
+          y: botMove.y,
+        },
+      };
+    }
+
+    // ===== CHECK HÒA SAU BOT =====
+    const totalCellsBot = nBot * nBot;
+    if (this.Rooms[idRoom].match.at(-1)!.numMove >= totalCellsBot) {
+      this.Rooms[idRoom].match.at(-1)!.stateGame = 2;
+      this.Rooms[idRoom].ratio[0].draw++;
+
+      const currMatch = this.Rooms[idRoom].match.at(-1)!;
+      this.matchService.updateMatchResult(currMatch.id, null, true);
+
+      const user0Id = this.Rooms[idRoom].user[0].idUser;
+      this.usersService.updateUserStats(user0Id, 'DRAW');
+
+      return {
+        state: 'ENDGAME',
+        client1: {
+          idUser: user0Id,
+          socket: this.Rooms[idRoom].user[0].socketUser,
+          result: 2,
+        },
+        ratio: this.Rooms[idRoom].ratio,
+        lines: [],
+        lastTurn: {
+          x: botMove.x,
+          y: botMove.y,
+        },
+      };
+    }
+
+    // Trả lượt lại cho player
+    this.Rooms[idRoom].match.at(-1)!.userTurn = 0;
+
+    // SET TIMEOUT MỚI cho lượt tiếp theo
+    const now = Date.now();
+    const currentMatch = this.Rooms[idRoom].match.at(-1)!;
+    currentMatch.turnTimeoutExpiresAt = now + this.TIME_LIMIT;
+
+    currentMatch.turnTimeout = setTimeout(() => {
+      this.handleTurnTimeout(idRoom, currentMatch, 'AI');
+    }, this.TIME_LIMIT);
+
+    return {
+      state: 'OK', // status: "OK" => Da di, "ERROR" => LOI
+      socketUser:
+        this.Rooms[idRoom].user[
+          this.Rooms[idRoom].match.at(-1)!.userTurn === 0 ? 0 : 1
+        ]?.socketUser,
+      x: botMove.x,
+      y: botMove.y,
+      turnDeadlineMs: currentMatch.turnTimeoutExpiresAt,
     };
   }
 }

@@ -6,7 +6,7 @@ export class UsersService {
   constructor(
     @Inject('POSTGRES_POOL')
     private readonly sql: Database,
-  ) {}
+  ) { }
 
   async createGuest() {
     const RandomId = Math.floor(1000 + Math.random() * 9000);
@@ -19,13 +19,68 @@ export class UsersService {
     return data[0] ?? null;
   }
 
+  async createUserEmail(username: string) {
+    await this.sql`
+      insert into users(username, type_login)
+      values(${username}, 1)`;
+  }
+
+  async createUserGmail(username: string, photoUrl: string) {
+    await this.sql`
+      insert into users(username, avatar_url, type_login)
+      values(${username}, ${photoUrl}, 2)`;
+  }
+
+  async getUserByUsername(username: string) {
+    const data = await this.sql`
+      select * from users where username = ${username}`;
+    return data[0] ?? null;
+  }
+
   async getUser(id: string) {
     const data = await this.sql`
-      select * 
-      from users 
-      where id = ${id}
+      select u.*, coalesce(le.email, lg.email) as email
+      from users u
+      left join login_by_email le on u.id = le.iduser
+      left join login_by_gg lg on u.id = lg.iduser
+      where u.id = ${id}
       limit 1
     `;
+    return data[0] ?? null;
+  }
+
+  async updateUser(id: string, username: string, photoUrl: string) {
+    await this.sql`
+      update users 
+      set username = ${username}, avatar_url = ${photoUrl} 
+      where id = ${id}
+    `;
+  }
+
+  async updateUserStats(id: string, result: 'WIN' | 'LOOSE' | 'DRAW') {
+    if (result === 'WIN') {
+      await this.sql`
+        update users
+        set total_matches = total_matches + 1, total_wins = total_wins + 1
+        where id = ${id}
+      `;
+    } else if (result === 'LOOSE') {
+      await this.sql`
+        update users
+        set total_matches = total_matches + 1, total_losses = total_losses + 1
+        where id = ${id}
+      `;
+    } else if (result === 'DRAW') {
+      await this.sql`
+        update users
+        set total_matches = total_matches + 1, total_draws = total_draws + 1
+        where id = ${id}
+      `;
+    }
+  }
+
+  async deleteUser(id: string) {
+    const data = await this.sql`delete from users where id = ${id}`;
     return data[0] ?? null;
   }
 }

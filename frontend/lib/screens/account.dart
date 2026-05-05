@@ -1,355 +1,614 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:hovering/hovering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:frontend/core/providers/user_provider.dart';
+import 'package:frontend/core/services/b2_service.dart';
+import 'package:frontend/core/services/service.dart';
+import 'package:frontend/core/notifiers/user_notifier.dart';
+import 'package:frontend/core/providers/login_with_email_provider.dart';
+import 'package:frontend/core/providers/login_with_google_provider.dart';
+import 'package:go_router/go_router.dart';
 
-class Account extends StatelessWidget {
+class Account extends ConsumerStatefulWidget {
   const Account({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
-          child: Card(
-            child: Column(
-              // mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ListTile(
-                  title: Text(
-                    'Account Manager',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 30.0,
-                    ),
-                  ),
-                ),
-                ListTile(
-                  title: Text(
-                    'Profile Picture',
-                    style: TextStyle(fontWeight: FontWeight.w400),
-                  ),
-                ),
-                Row(
-                  children: [
-                    ChooseImage(),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
-                      child: Column(
-                        children: [
-                          Text('Click to upload a new photo'),
-                          Text(
-                            'JPG, PNG or GIF (MAX. 5MB)',
-                            style: TextStyle(color: Colors.grey[500]),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                ListTile(title: Text('Display Name')),
-                Container(
-                  padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      hintText: 'Guest',
-                      contentPadding: EdgeInsets.all(10.0),
-                    ),
-                  ),
-                ),
-                ListTile(title: Text('Email Address')),
-                Container(
-                  padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
-                  child: TextField(
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      hintText: 'Guest',
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.all(10.0),
-                        child: FaIcon(FontAwesomeIcons.envelope),
-                      ),
-                      contentPadding: EdgeInsets.all(10.0),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
-                  child: Text(
-                    'Login to register your email',
-                    style: TextStyle(
-                      fontSize: 12.0,
-                      fontWeight: FontWeight.w100,
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Account Statistics',
-                        style: TextStyle(
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Column(
-                            children: [
-                              Text(
-                                '24',
-                                style: TextStyle(
-                                  fontSize: 20.0,
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Wins',
-                                style: TextStyle(
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.w200,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            children: [
-                              Text(
-                                '13',
-                                style: TextStyle(
-                                  fontSize: 20.0,
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Lose',
-                                style: TextStyle(
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.w200,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            children: [
-                              Text(
-                                '5',
-                                style: TextStyle(
-                                  fontSize: 20.0,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                              Text(
-                                'Draws',
-                                style: TextStyle(
-                                  fontSize: 18.0,
-                                  fontWeight: FontWeight.w200,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
-                  child: SizedBox(
-                    width: 1280.0,
-                    height: 50.0,
-                    child: FloatingActionButton(
-                      onPressed: () {},
-                      hoverColor: Colors.blue[600],
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          FaIcon(FontAwesomeIcons.floppyDisk),
-                          Padding(padding: EdgeInsets.all(5.0)),
-                          Text('Save change'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 0.0),
-                  child: Divider(thickness: 1, height: 10.0),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 0.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Danger Zone',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Once you delete your account, there is no going back. Please be certain.',
-                      ),
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(10.0, 10.0, 10.0, 10.0),
-                        child: SizedBox(
-                          width: 200.0,
-                          height: 50.0,
-                          child: FloatingActionButton(
-                            onPressed: () {},
-                            backgroundColor: Colors.red[50],
-                            hoverColor: Colors.red[200],
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                FaIcon(
-                                  FontAwesomeIcons.trashCan,
-                                  color: Colors.red,
-                                ),
-                                Padding(padding: EdgeInsets.all(5.0)),
-                                Text(
-                                  'Save change',
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  ConsumerState<ConsumerStatefulWidget> createState() => _AccountState();
 }
 
-class HoverTextIcon extends StatefulWidget {
-  const HoverTextIcon({super.key});
+class _AccountState extends ConsumerState<Account> {
+  final TextEditingController userEdit = TextEditingController();
+  final TextEditingController emailEdit = TextEditingController();
 
-  @override
-  State<HoverTextIcon> createState() => _HoverTextIconState();
-}
-
-class _HoverTextIconState extends State<HoverTextIcon> {
-  bool check = true;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 90,
-      height: 90,
-      decoration: BoxDecoration(shape: BoxShape.circle),
-      child: MouseRegion(
-        onEnter: (PointerEvent details) => setState(() {
-          check = false;
-        }),
-        onExit: (PointerEvent details) => setState(() {
-          check = true;
-        }),
-        child: check
-            ? Center(
-                child: Text(
-                  'G',
-                  style: TextStyle(fontSize: 30.0, color: Colors.grey[700]),
-                ),
-              )
-            : Center(
-                child: FaIcon(FontAwesomeIcons.camera, color: Colors.white),
-              ),
-      ),
-    );
-  }
-}
-
-class ChooseImage extends StatefulWidget {
-  const ChooseImage({super.key});
-
-  @override
-  State<ChooseImage> createState() => _ChooseImageState();
-}
-
-class _ChooseImageState extends State<ChooseImage> {
+  String _username = '';
+  String _email = '';
+  int _totalWins = 0;
+  int _totalLosses = 0;
+  int _totalDraws = 0;
+  String? _avatarUrl;
+  int _type = 0; // 0: Guest, 1: Email, 2: Google
   PlatformFile? _platformFile;
+  bool _isLoading = false; // Trạng thái loading để tránh dùng Navigator.pop lỗi
+  String _uuid = '';
+  bool _isLoadingUuid = true; // Trạng thái loading để tránh dùng Navigator.pop lỗi
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccountData();
+    _loadUuid();
+  }
+
+  Future<void> _loadAccountData() async {
+    try {
+      final data = await UserProvider.loadUser();
+      final user = data['user'];
+      if (user != null) {
+        if (mounted) {
+          setState(() {
+            _username = user['username'] ?? '';
+            userEdit.text = _username;
+            _email = user['email'] ?? '';
+            emailEdit.text = _email;
+            _totalWins = user['total_wins'] ?? 0;
+            _totalLosses = user['total_losses'] ?? 0;
+            _totalDraws = user['total_draws'] ?? 0;
+            _avatarUrl = user['avatar_url'] ?? '';
+            _type = user['type_login'] ?? 0;
+            _platformFile = null;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi khi tải thông tin tài khoản: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadUuid() async {
+    try {
+      final uid = await FlutterSecureStorage().read(key: 'uid');
+      if (uid != null && mounted) {
+        setState(() {
+          _uuid = uid;
+          _isLoadingUuid = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _uuid = 'Không thể tải UUID';
+          _isLoadingUuid = false;
+        });
+      }
+    }
+  }
+
+  void delete() async {
+    String? uid = await FlutterSecureStorage().read(key: 'uid');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 10),
+            Text('Xác nhận xóa', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Bạn có chắc chắn muốn xóa tài khoản này không? Mọi dữ liệu của bạn sẽ bị xóa vĩnh viễn và không thể khôi phục.',
+          style: TextStyle(fontSize: 15, height: 1.5),
+        ),
+        actionsPadding: const EdgeInsets.only(right: 15, bottom: 15),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (uid != null) {
+                if (_type == 1) {
+                  await LoginWithEmailProvider().deleteEmail(uid);
+                }
+                if (_type == 2) {
+                  await LoginWithGoogleProvider().deleteEmail(uid);
+                }
+                await UserProvider.deleteUser(uid);
+                await FlutterSecureStorage().delete(key: 'uid');
+                if (mounted) {
+                  Navigator.of(context).pop();
+                  context.go('/');
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            child: const Text('Xác nhận xóa', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> update() async {
+    String? uid = await FlutterSecureStorage().read(key: 'uid');
+    
+    if (uid != null) {
+      setState(() => _isLoading = true);
+
+      try {
+        String finalPhotoUrl = _avatarUrl ?? '';
+        
+        if (_platformFile != null && _platformFile!.bytes != null) {
+          String? uploadedUrl = await B2Service.uploadFile(
+            _platformFile!.bytes!, 
+            _platformFile!.name,
+          );
+          if (uploadedUrl != null) {
+            finalPhotoUrl = uploadedUrl;
+          }
+        }
+
+        await UserProvider.updateUser(uid, _username, finalPhotoUrl);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 10),
+                  Text('Cập nhật tài khoản thành công!'),
+                ],
+              ),
+              backgroundColor: Colors.green[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+          // Load lại dữ liệu để cập nhật header
+          _loadAccountData();
+          // Refresh user notifier để cập nhật header
+          ref.read(userNotifier.notifier).loadUser();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi khi cập nhật: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    }
+  }
 
   Future<void> pickImage() async {
     try {
-      // Pick an image file using file_picker package
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.image,
       );
 
-      // If user cancels the picker, do nothing
       if (result == null) return;
 
-      // If user picks an image, update the state with the new image file
       setState(() {
         _platformFile = result.files.first;
       });
     } catch (e) {
-      // If there is an error, show a snackbar with the error message
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
+  }
+
+  String _getDisplayUrl(String? url) {
+    if (url == null || url.isEmpty || url.startsWith('blob:')) return '';
+    if (url.contains('backblazeb2.com') && !url.contains('/b2/file/')) {
+      try {
+        final uri = Uri.parse(url);
+        if (uri.pathSegments.isNotEmpty) {
+          final fileName = uri.pathSegments.last;
+          return "${Service.apiUrl}/b2/file/$fileName";
+        }
+        return url;
+      } catch (e) {
+        return url;
+      }
+    }
+    return url;
   }
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(elevation: 0),
-      onHover: (value) => {ElevatedButton.styleFrom(elevation: 0)},
-      onPressed: pickImage,
-      child: HoverContainer(
-        margin: EdgeInsets.fromLTRB(10.0, 0.0, 0.0, 0.0),
-        width: 90,
-        height: 90,
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-          shape: BoxShape.circle,
-        ),
-        hoverDecoration: BoxDecoration(
-          color: Colors.black,
-          shape: BoxShape.circle,
-        ),
-        child: _platformFile != null
-            ? ClipOval(
-                child: SizedBox.fromSize(
-                  size: Size.fromRadius(100.0),
-                  child: Image.memory(
-                    Uint8List.fromList(_platformFile!.bytes!),
-                    width: 300,
-                    height: 300,
-                    fit: BoxFit.cover,
-                  ),
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: Stack(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              bool isMobile = constraints.maxWidth < 600;
+              double horizontalPadding = isMobile ? 16 : (constraints.maxWidth - 500) / 2;
+
+              return SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.grey[200]!),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 32),
+                          _buildAvatarSection(isMobile),
+                          const SizedBox(height: 32),
+                          _buildFormSection(),
+                          const SizedBox(height: 40),
+                          _buildActionButtons(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildDangerZone(),
+                  ],
                 ),
-              )
-            : HoverTextIcon(),
+              );
+            },
+          ),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tài khoản',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Quản lý thông tin cá nhân và cài đặt bảo mật',
+          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAvatarSection(bool isMobile) {
+    String displayUrl = _getDisplayUrl(_avatarUrl);
+    
+    return Center(
+      child: Column(
+        children: [
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: pickImage,
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.indigoAccent.withOpacity(0.2), width: 4),
+                    ),
+                    child: CircleAvatar(
+                      radius: isMobile ? 50 : 60,
+                      backgroundColor: Colors.grey[100],
+                      backgroundImage: _platformFile != null && _platformFile!.bytes != null
+                          ? MemoryImage(_platformFile!.bytes!)
+                          : (displayUrl.isNotEmpty
+                              ? NetworkImage(displayUrl) as ImageProvider
+                              : null),
+                      child: (_platformFile == null && displayUrl.isEmpty)
+                          ? Icon(Icons.person, size: isMobile ? 50 : 60, color: Colors.grey[300])
+                          : null,
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(color: Colors.indigoAccent, shape: BoxShape.circle),
+                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _type == 0 ? 'Tài khoản khách' : 'Thành viên',
+            style: TextStyle(color: Colors.indigo[700], fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Mã định danh người dùng (UUID)',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4A4A4A)),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Text(
+                        _isLoadingUuid ? 'Đang tải...' : _uuid,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () async {
+                      if (_uuid.isNotEmpty && _uuid != 'Không thể tải UUID') {
+                        await Clipboard.setData(ClipboardData(text: _uuid));
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.white),
+                                  SizedBox(width: 10),
+                                  Text('Đã sao chép UUID!'),
+                                ],
+                              ),
+                              backgroundColor: Colors.green[700],
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.copy, size: 18),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.indigo[50],
+                      foregroundColor: Colors.indigo[700],
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildTextField(
+          label: 'Tên hiển thị',
+          controller: userEdit,
+          hint: 'Nhập tên của bạn',
+          icon: Icons.person_outline,
+          onChanged: (val) => setState(() => _username = val),
+        ),
+        if (_type != 0) ...[
+          const SizedBox(height: 20),
+          _buildTextField(
+            label: 'Địa chỉ Email',
+            controller: emailEdit,
+            hint: 'email@example.com',
+            icon: Icons.email_outlined,
+            enabled: false,
+          ),
+        ],
+        const SizedBox(height: 32),
+        const Text(
+          'Thống kê trận đấu',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _buildStatCard('Thắng', _totalWins.toString(), Colors.green)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCard('Hòa', _totalDraws.toString(), Colors.orange)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCard('Thua', _totalLosses.toString(), Colors.red)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool enabled = true,
+    Function(String)? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4A4A4A)),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          enabled: enabled,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, size: 20, color: Colors.grey[400]),
+            filled: true,
+            fillColor: enabled ? Colors.white : Colors.grey[50],
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.indigoAccent, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return _buildPrimaryButton(label: 'LƯU THAY ĐỔI', onPressed: update);
+  }
+
+  Widget _buildSmallButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 0,
+      ),
+    );
+  }
+
+  Widget _buildPrimaryButton({required String label, required VoidCallback onPressed}) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.indigoAccent[700],
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 2,
+          shadowColor: Colors.indigoAccent.withOpacity(0.3),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1.1),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDangerZone() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red[100]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Vùng nguy hiểm', style: TextStyle(color: Colors.red[900], fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
+          Text('Một khi bạn xóa tài khoản, mọi dữ liệu sẽ không thể khôi phục.', style: TextStyle(color: Colors.red[700], fontSize: 13)),
+          const SizedBox(height: 20),
+          OutlinedButton(
+            onPressed: delete,
+            style: ButtonStyle(
+              foregroundColor: WidgetStateProperty.all(Colors.red[700]),
+              side: WidgetStateProperty.all(BorderSide(color: Colors.red[200]!)),
+              padding: WidgetStateProperty.all(const EdgeInsets.symmetric(vertical: 16, horizontal: 24)),
+              shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.hovered)) return Colors.red[100];
+                return Colors.transparent;
+              }),
+            ),
+            child: const Text('Xóa tài khoản của tôi', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

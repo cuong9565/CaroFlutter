@@ -4,14 +4,21 @@ import 'package:frontend/screens/chat.dart';
 import 'package:frontend/screens/friends.dart';
 import 'package:frontend/screens/game_online.dart';
 import 'package:frontend/screens/game.dart';
+import 'package:frontend/screens/game_machine.dart';
 import 'package:frontend/screens/history.dart';
+import 'package:frontend/screens/history_detail.dart';
 import 'package:frontend/screens/home.dart';
+import 'package:frontend/screens/login.dart';
+import 'package:frontend/screens/signin.dart';
 import 'package:frontend/screens/play_with_friend.dart';
 import 'package:frontend/widgets/layout/my_error.dart';
 import 'package:frontend/widgets/main_layout.dart';
 import 'package:go_router/go_router.dart';
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final GoRouter router = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   errorBuilder: (context, state) =>
       SafeArea(child: Scaffold(body: MyErrorPageURL())),
@@ -35,8 +42,19 @@ final GoRouter router = GoRouter(
       builder: (_, _) => const SafeArea(child: Scaffold(body: Game())),
     ),
     GoRoute(
-      path: '/game-online',
-      builder: (_, _) => const SafeArea(child: Scaffold(body: GameOnline())),
+      path: '/login',
+      builder: (_, _) => const SafeArea(child: Scaffold(body: Login())),
+    ),
+    GoRoute(
+      path: '/signin',
+      builder: (_, _) => const SafeArea(child: Scaffold(body: Signin())),
+    ),
+    GoRoute(
+      path: '/history/:roomId',
+      builder: (context, state) {
+        final roomId = state.pathParameters['roomId']!;
+        return SafeArea(child: HistoryDetail(roomId: roomId));
+      },
     ),
     GoRoute(
       path: '/play/:idRoom',
@@ -44,6 +62,24 @@ final GoRouter router = GoRouter(
         final idRoom = state.pathParameters['idRoom']!;
         return SafeArea(
           child: Scaffold(body: PlayWithFriend(idRoom: idRoom)),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/play-ai/:idRoom',
+      builder: (context, state) {
+        final idRoom = state.pathParameters['idRoom']!;
+        return SafeArea(
+          child: Scaffold(body: GameMachine(idRoom: idRoom)),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/game-online/:idRoom',
+      builder: (context, state) {
+        final idRoom = state.pathParameters['idRoom']!;
+        return SafeArea(
+          child: Scaffold(body: GameOnline(idRoom: idRoom)),
         );
       },
     ),

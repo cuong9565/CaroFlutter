@@ -1,13 +1,28 @@
 import 'package:frontend/core/services/service.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../models/message_model.dart';
+
 class SocketService {
   static final String _apiUrl = Service.apiUrl;
 
-  static late io.Socket socket;
+  static io.Socket? _socket;
+  static String? _currentUserId;
+
+  static bool get isInitialized => _socket != null;
+  static io.Socket? get socket => _socket;
 
   static void init(String userId) {
-    socket = io.io(
+    if (_socket != null && _currentUserId == userId) {
+      if (!(_socket!.connected)) {
+        _socket!.connect();
+      }
+      return;
+    }
+
+    _socket?.disconnect();
+    _currentUserId = userId;
+
+    _socket = io.io(
       _apiUrl,
       io.OptionBuilder()
           .setTransports(['websocket'])
@@ -16,18 +31,18 @@ class SocketService {
           .build(),
     );
 
+    final socket = _socket!;
+
     socket.connect();
 
     socket.onConnect((_) {
       print('Socket Connected: ${socket.id}');
     });
 
-    // Khi mất kết nối
     socket.onDisconnect((_) {
       print('Socket Disconnected');
     });
 
-    // Khi lỗi
     socket.onConnectError((data) {
       print('Socket Connect Error: $data');
     });
@@ -37,29 +52,97 @@ class SocketService {
   }
 
   static void disconnect() {
-    socket.disconnect();
+    _socket?.disconnect();
   }
 
-  static void sendMessage(String conversationId, String content, String senderId) {
-    socket.emit('send_message', {'conversationId': conversationId, 'content': content, 'senderId': senderId});
+  static void emit(String event, [dynamic data]) {
+    if (data == null) {
+      _socket?.emit(event);
+      return;
+    }
+    _socket?.emit(event, data);
+  }
+
+  static void on(String event, Function(dynamic) callback) {
+    _socket?.on(event, callback);
+  }
+
+  static void once(String event, Function(dynamic) callback) {
+    _socket?.once(event, callback);
+  }
+
+  static void off(String event, [Function(dynamic)? callback]) {
+    if (callback == null) {
+      _socket?.off(event);
+      return;
+    }
+    _socket?.off(event, callback);
+  }
+
+  static void onConnect(Function(dynamic) callback) {
+    _socket?.onConnect(callback);
+  }
+
+  static void onDisconnect(Function(dynamic) callback) {
+    _socket?.onDisconnect(callback);
+  }
+
+  static void onConnectError(Function(dynamic) callback) {
+    _socket?.onConnectError(callback);
+  }
+
+  static void onError(Function(dynamic) callback) {
+    _socket?.onError(callback);
+  }
+
+  static String _formatTimestamp(DateTime value) {
+    final local = value.toLocal();
+    final year = local.year.toString().padLeft(4, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    final second = local.second.toString().padLeft(2, '0');
+    final micro = local.microsecond.toString().padLeft(6, '0');
+    return '$year-$month-$day $hour:$minute:$second.$micro';
+  }
+
+  static void sendMessage(
+    String conversationId,
+    String content,
+    String senderId, {
+    DateTime? timestamp,
+  }) {
+    emit('send_message', {
+      'conversationId': conversationId,
+      'content': content,
+      'senderId': senderId,
+      'timestamp': _formatTimestamp(timestamp ?? DateTime.now()),
+    });
   }
 
   static void joinConversation(String conversationId) {
-    socket.emit('join_conversation', {'conversationId': conversationId});
+    emit('join_conversation', {'conversationId': conversationId});
   }
 
   static void sendTyping(String conversationId, String userId, bool isTyping) {
-    socket.emit('typing', {'conversationId': conversationId, 'isTyping': isTyping, 'senderId': userId});
+    emit('typing', {
+      'conversationId': conversationId,
+      'isTyping': isTyping,
+      'senderId': userId,
+    });
   }
 
   static void onNewMessage(Function(Message) callback) {
-    socket.on('new_message', (data) {
+    off('new_message');
+    on('new_message', (data) {
       callback(Message.fromJson(data));
     });
   }
 
   static void onConversationHistory(Function(List<Message>) callback) {
-    socket.on('conversation_history', (data) {
+    off('conversation_history');
+    on('conversation_history', (data) {
       callback((data as List).map((m) => Message.fromJson(m)).toList());
     });
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../core/providers/chat_provider.dart';
 import '../core/models/conversation_model.dart';
 import 'chat_detail.dart';
@@ -16,13 +17,53 @@ class _ChatState extends State<Chat> {
   Conversation? _selectedConversation;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
+  bool _didHandleDeepLink = false;
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      chatProvider.loadConversations();
+      // Nếu chưa có userId, reinitialize để đọc lại từ storage
+      if (chatProvider.currentUserId.isEmpty) {
+        await chatProvider.reinitialize();
+      }
+      await chatProvider.loadConversations();
+      await _handleDeepLink(chatProvider);
     });
+  }
+
+  Future<void> _handleDeepLink(ChatProvider chatProvider) async {
+    if (_didHandleDeepLink) {
+      return;
+    }
+    final extra = GoRouterState.of(context).extra;
+    if (extra is Map) {
+      final targetUserId = extra['targetUserId']?.toString();
+      final targetUsername = extra['targetUsername']?.toString();
+      if (targetUserId != null && targetUserId.isNotEmpty) {
+        final conversation = await chatProvider.openConversationWithUser(
+          targetUserId,
+          targetUsername ?? 'Khong ro',
+        );
+        if (!mounted) {
+          return;
+        }
+        final isWide = MediaQuery.of(context).size.width > 700;
+        if (isWide) {
+          setState(() {
+            _selectedConversation = conversation;
+          });
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatDetail(conversation: conversation),
+            ),
+          );
+        }
+      }
+    }
+    _didHandleDeepLink = true;
   }
 
               
@@ -169,6 +210,7 @@ class _ChatState extends State<Chat> {
     final otherUser = conversation.getOtherUser(chatProvider.currentUsername);
     final hasUnread = conversation.unreadCount > 0;
     final isSelected = _selectedConversation?.id == conversation.id;
+    final lastMessageContent = conversation.lastMessage?['content'] ?? '';
 
     return InkWell(
       onTap: () {
@@ -216,11 +258,7 @@ class _ChatState extends State<Chat> {
                     children: [
                       Expanded(
                         child: Text(
-                          () {
-                            final name = conversation.getOtherUser(chatProvider.currentUsername);
-                            print('Conversation ${conversation.id}: currentUsername=${chatProvider.currentUsername}, otherName=$name');
-                            return name;
-                          }(),
+                          otherUser,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
@@ -245,7 +283,7 @@ class _ChatState extends State<Chat> {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation.lastMessage?['content'] ?? '',
+                          lastMessageContent,
                           style: TextStyle(
                             fontSize: 14,
                             color: hasUnread ? const Color.fromARGB(221, 59, 13, 13) : Colors.grey[600],
@@ -340,16 +378,22 @@ class _ChatState extends State<Chat> {
   }
 
   String _formatTime(DateTime time) {
+    final localTime = time.isUtc ? time.toLocal() : time;
     final now = DateTime.now();
-    final difference = now.difference(time);
+    final difference = now.difference(localTime);
+
+    if (difference.isNegative) {
+      return DateFormat('HH:mm').format(localTime);
+    }
+
     if (difference.inDays == 0) {
-      return DateFormat('HH:mm').format(time);
+      return DateFormat('HH:mm').format(localTime);
     } else if (difference.inDays == 1) {
       return 'Hôm qua';
     } else if (difference.inDays < 7) {
-      return DateFormat('EEE').format(time);
+      return DateFormat('EEE').format(localTime);
     } else {
-      return DateFormat('dd/MM').format(time);
+      return DateFormat('dd/MM').format(localTime);
     }
   }
 }

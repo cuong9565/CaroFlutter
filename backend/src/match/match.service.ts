@@ -17,4 +17,12 @@ export class MatchService {
     `;
     return data[0] as MatchType;
   }
+
+  async updateMatchResult(id: string, winnerId: string | null, isDraw: boolean = false, isAiWin: boolean = false) {
+    await this.sql`
+      update match
+      set winner_id = ${winnerId}, is_draw = ${isDraw}, is_ai_win = ${isAiWin}
+      where id = ${id}
+    `;
+  }
 }

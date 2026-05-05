@@ -8,11 +8,13 @@ import '../widgets/switch/message_input.dart';
 class ChatDetail extends StatefulWidget {
   final Conversation conversation;
   final bool isEmbedded;
+  final String? targetUserId;
   
   const ChatDetail({
     super.key,
     required this.conversation,
     this.isEmbedded = false,
+    this.targetUserId,
   });
 
   @override
@@ -22,14 +24,18 @@ class ChatDetail extends StatefulWidget {
 class _ChatDetailState extends State<ChatDetail> {
   final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
+  late String _conversationId;
 
   @override
   void initState() {
     super.initState();
+    _conversationId = widget.conversation.id;
     // Load messages when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      chatProvider.loadMessages(widget.conversation.id);
+      if (_conversationId.isNotEmpty) {
+        chatProvider.loadMessages(_conversationId);
+      }
       _scrollToBottom();
     });
   }
@@ -57,9 +63,15 @@ class _ChatDetailState extends State<ChatDetail> {
   @override
   Widget build(BuildContext context) {
     final chatProvider = Provider.of<ChatProvider>(context);
-    final otherUser = widget.conversation.getOtherUser(chatProvider.currentUsername);
-    final messages = chatProvider.getMessages(widget.conversation.id);
-    final isOtherUserTyping = chatProvider.isTyping(widget.conversation.id);
+    final otherUser = widget.conversation.getOtherUser(
+      chatProvider.currentUsername,
+    );
+    final messages = _conversationId.isEmpty
+        ? <dynamic>[]
+        : chatProvider.getMessages(_conversationId);
+    final isOtherUserTyping = _conversationId.isEmpty
+        ? false
+        : chatProvider.isTyping(_conversationId);
 
     // Auto-scroll when new messages arrive
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -141,13 +153,29 @@ class _ChatDetailState extends State<ChatDetail> {
         ),
         // Message input
         MessageInput(
-          onSendMessage: (content) {
-            chatProvider.sendMessage(widget.conversation.id, content);
+          onSendMessage: (content) async {
+            if (_conversationId.isEmpty && widget.targetUserId != null) {
+              final newId = await chatProvider.sendMessageToUser(
+                widget.targetUserId!,
+                otherUser,
+                content,
+              );
+              if (mounted) {
+                setState(() {
+                  _conversationId = newId;
+                });
+              }
+              chatProvider.loadMessages(newId);
+              return;
+            }
+            if (_conversationId.isNotEmpty) {
+              chatProvider.sendMessage(_conversationId, content);
+            }
           },
           onTypingChanged: (isTyping) {
-            if (_isTyping != isTyping) {
+            if (_conversationId.isNotEmpty && _isTyping != isTyping) {
               _isTyping = isTyping;
-              chatProvider.setTyping(widget.conversation.id, isTyping);
+              chatProvider.setTyping(_conversationId, isTyping);
             }
           },
         ),

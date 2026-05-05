@@ -21,14 +21,43 @@ class Message {
     return Message(
       id: json['id'] ?? '',
       conversationId: json['conversationId'] ?? '',
-      senderUsername: json['sender'] is String ? json['sender'] : json['sender']['username'] ?? '',
+      senderUsername: _parseSenderUsername(json['sender']),
       content: json['content'] ?? '',
-      timestamp: json['timestamp'] != null
-          ? DateTime.parse(json['timestamp'])
-          : DateTime.now(),
+      timestamp: _parseTimestamp(json['timestamp']),
       isRead: json['isRead'] ?? false,
       isSent: json['isSent'] ?? true,
     );
+  }
+
+  static String _parseSenderUsername(dynamic sender) {
+    if (sender is String) {
+      return sender;
+    }
+
+    if (sender is Map && sender['username'] is String) {
+      return sender['username'] as String;
+    }
+
+    return '';
+  }
+
+  static DateTime _parseTimestamp(dynamic value) {
+    if (value is DateTime) {
+      return value.toLocal();
+    }
+
+    if (value is String && value.isNotEmpty) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) {
+        return parsed.toLocal();
+      }
+    }
+
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value).toLocal();
+    }
+
+    return DateTime.now().toLocal();
   }
 
   Map<String, dynamic> toJson() {

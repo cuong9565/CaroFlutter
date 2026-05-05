@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:frontend/core/models/line.dart';
 
 class MyCustomPaintO extends StatelessWidget {
   final double size;
@@ -70,13 +71,17 @@ class _MyCustomPaintX extends CustomPainter {
 
 class CircleCountDown extends StatefulWidget {
   final double size;
-  final int seconds;
-  const CircleCountDown({super.key, required this.size, required this.seconds});
+  final double seconds;
+  final bool running;
+  const CircleCountDown({
+    super.key,
+    required this.size,
+    required this.seconds,
+    required this.running,
+  });
 
   @override
-  State<StatefulWidget> createState() {
-    return _CircleCountDown();
-  }
+  State<StatefulWidget> createState() => _CircleCountDown();
 }
 
 class _CircleCountDown extends State<CircleCountDown>
@@ -88,14 +93,34 @@ class _CircleCountDown extends State<CircleCountDown>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(seconds: widget.seconds),
-    )..forward();
+      duration: Duration(milliseconds: (widget.seconds * 1000).round()),
+    );
+    if (widget.running) _controller.forward();
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant CircleCountDown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.running) {
+      if (oldWidget.running) {
+        // NOT THING
+      } else {
+        _controller.reset();
+        _controller.forward();
+      }
+    } else {
+      if (oldWidget.running) {
+        _controller.reset();
+      } else {
+        // NOT THING
+      }
+    }
   }
 
   @override
@@ -241,15 +266,15 @@ class _GameBoard extends State<GameBoard> {
       child: GestureDetector(
         onTapUp: _handelOnTapUp,
         child: CustomPaint(
-          size: Size(gridSize * cellSize, gridSize * cellSize),
-          painter: MyCustomPaintGameBoardCustomPainter(
-            gridSize,
-            cellSize,
-            visitedX,
-            visitedO,
-            hoverCell,
-            currMoveIsX,
-          ),
+          // size: Size(gridSize * cellSize, gridSize * cellSize),
+          // painter: MyCustomPaintGameBoardCustomPainter(
+          //   gridSize,
+          //   cellSize,
+          //   visitedX,
+          //   visitedO,
+          //   hoverCell,
+          //   currMoveIsX,
+          // ),
         ),
       ),
     );
@@ -263,6 +288,8 @@ class MyCustomPaintGameBoardCustomPainter extends CustomPainter {
   final Offset? hoverCell;
   final Set<Offset> visitedX;
   final Set<Offset> visitedO;
+  final List<Line> lines;
+  final int stateGame;
   const MyCustomPaintGameBoardCustomPainter(
     this.gridSize,
     this.cellSize,
@@ -270,6 +297,8 @@ class MyCustomPaintGameBoardCustomPainter extends CustomPainter {
     this.visitedO,
     this.hoverCell,
     this.currMoveIsX,
+    this.lines,
+    this.stateGame,
   );
 
   @override
@@ -354,6 +383,97 @@ class MyCustomPaintGameBoardCustomPainter extends CustomPainter {
         _drawO(canvas, cellSize, strokeO, x, y, paintO);
       }
     }
+
+    // Vẽ đường thắng
+    if (stateGame == 1) {
+      // Bạn thua
+      for (int i = 0; i < lines.length; i++) {
+        int typeLine = lines[i].typeLine;
+        Point p_top = lines[i].top;
+        Point p_bottom = lines[i].bottom;
+        switch (typeLine) {
+          // Đường ngang
+          case 1:
+            canvas.drawLine(
+              Offset((p_top.y + 0.5) * cellSize, p_top.x * cellSize),
+              Offset(
+                (p_bottom.y + 0.5) * cellSize,
+                (p_bottom.x + 1) * cellSize,
+              ),
+              !currMoveIsX ? paintX : paintO,
+            );
+            break;
+          case 2:
+            canvas.drawLine(
+              Offset((p_top.y) * cellSize, (p_top.x + 0.5) * cellSize),
+              Offset(
+                (p_bottom.y + 1) * cellSize,
+                (p_bottom.x + 0.5) * cellSize,
+              ),
+              !currMoveIsX ? paintX : paintO,
+            );
+            break;
+          case 3:
+            canvas.drawLine(
+              Offset((p_top.y) * cellSize, (p_top.x) * cellSize),
+              Offset((p_bottom.y + 1) * cellSize, (p_bottom.x + 1) * cellSize),
+              !currMoveIsX ? paintX : paintO,
+            );
+            break;
+          case 4:
+            canvas.drawLine(
+              Offset((p_top.y + 1) * cellSize, (p_top.x) * cellSize),
+              Offset((p_bottom.y) * cellSize, (p_bottom.x + 1) * cellSize),
+              !currMoveIsX ? paintX : paintO,
+            );
+            break;
+        }
+      }
+    } else if (stateGame == 0) {
+      // Bạn thua
+      for (int i = 0; i < lines.length; i++) {
+        int typeLine = lines[i].typeLine;
+        Point p_top = lines[i].top;
+        Point p_bottom = lines[i].bottom;
+        switch (typeLine) {
+          // Đường ngang
+          case 1:
+            canvas.drawLine(
+              Offset((p_top.y + 0.5) * cellSize, p_top.x * cellSize),
+              Offset(
+                (p_bottom.y + 0.5) * cellSize,
+                (p_bottom.x + 1) * cellSize,
+              ),
+              currMoveIsX ? paintX : paintO,
+            );
+            break;
+          case 2:
+            canvas.drawLine(
+              Offset((p_top.y) * cellSize, (p_top.x + 0.5) * cellSize),
+              Offset(
+                (p_bottom.y + 1) * cellSize,
+                (p_bottom.x + 0.5) * cellSize,
+              ),
+              currMoveIsX ? paintX : paintO,
+            );
+            break;
+          case 3:
+            canvas.drawLine(
+              Offset((p_top.y) * cellSize, (p_top.x) * cellSize),
+              Offset((p_bottom.y + 1) * cellSize, (p_bottom.x + 1) * cellSize),
+              currMoveIsX ? paintX : paintO,
+            );
+            break;
+          case 4:
+            canvas.drawLine(
+              Offset((p_top.y + 1) * cellSize, (p_top.x) * cellSize),
+              Offset((p_bottom.y) * cellSize, (p_bottom.x + 1) * cellSize),
+              currMoveIsX ? paintX : paintO,
+            );
+            break;
+        }
+      }
+    }
   }
 
   @override
@@ -362,7 +482,8 @@ class MyCustomPaintGameBoardCustomPainter extends CustomPainter {
   ) {
     return (oldDelegate.visitedX.length != visitedX.length) ||
         (oldDelegate.visitedO.length != visitedO.length) ||
-        (oldDelegate.hoverCell != hoverCell);
+        (oldDelegate.hoverCell != hoverCell) ||
+        (oldDelegate.lines != lines);
   }
 }
 
