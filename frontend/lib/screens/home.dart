@@ -471,5 +471,3 @@ void _funtionHelperLayout(
 void _navigateToPlayWithFriend(BuildContext context) {
   context.go('/game');
 }
-
-//

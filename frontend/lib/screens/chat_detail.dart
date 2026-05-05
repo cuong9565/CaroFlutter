@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/models/conversation_model.dart';
+import '../core/models/message_model.dart';
 import '../core/providers/chat_provider.dart';
+import '../core/providers/challenge_provider.dart';
 import '../widgets/switch/message_bubble.dart';
 import '../widgets/switch/message_input.dart';
 
@@ -60,18 +62,83 @@ class _ChatDetailState extends State<ChatDetail> {
     }
   }
 
+  String? _resolveTargetUserId(
+    ChatProvider chatProvider,
+    List<Message> messages,
+  ) {
+    if (widget.targetUserId != null && widget.targetUserId!.isNotEmpty) {
+      return widget.targetUserId;
+    }
+
+    final otherParticipant =
+        widget.conversation.getOtherParticipant(chatProvider.currentUsername);
+    if (otherParticipant != null && otherParticipant.id.isNotEmpty) {
+      return otherParticipant.id;
+    }
+
+    final currentUserId = chatProvider.currentUserId;
+    if (currentUserId.isEmpty) {
+      return null;
+    }
+
+    for (final message in messages) {
+      if (message.senderId.isNotEmpty && message.senderId != currentUserId) {
+        return message.senderId;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _sendChallenge(String targetUserId) async {
+    try {
+      final challengeProvider =
+          Provider.of<ChallengeProvider>(context, listen: false);
+      await challengeProvider.sendChallenge(targetUserId);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Loi: ${error.toString()}')),
+      );
+    }
+  }
+
+  String _resolveAvatarUrlForMessage(
+    Message message,
+    ChatProvider chatProvider,
+  ) {
+    for (final participant in widget.conversation.participantDetails) {
+      if (participant.id.isNotEmpty && participant.id == message.senderId) {
+        return participant.avatarUrl;
+      }
+    }
+
+    for (final participant in widget.conversation.participantDetails) {
+      if (participant.username == message.senderUsername) {
+        return participant.avatarUrl;
+      }
+    }
+
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatProvider = Provider.of<ChatProvider>(context);
-    final otherUser = widget.conversation.getOtherUser(
-      chatProvider.currentUsername,
-    );
+    final otherParticipant =
+      widget.conversation.getOtherParticipant(chatProvider.currentUsername);
+    final otherUser = otherParticipant?.username ??
+      widget.conversation.getOtherUser(chatProvider.currentUsername);
+    final avatarUrl = otherParticipant?.avatarUrl ?? '';
     final messages = _conversationId.isEmpty
-        ? <dynamic>[]
-        : chatProvider.getMessages(_conversationId);
+      ? <Message>[]
+      : chatProvider.getMessages(_conversationId);
     final isOtherUserTyping = _conversationId.isEmpty
         ? false
         : chatProvider.isTyping(_conversationId);
+    final targetUserId = _resolveTargetUserId(chatProvider, messages);
 
     // Auto-scroll when new messages arrive
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -95,7 +162,11 @@ class _ChatDetailState extends State<ChatDetail> {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: Colors.grey[300],
-                  child: _buildDefaultAvatar(otherUser),
+                  backgroundImage:
+                      avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                  child: avatarUrl.isNotEmpty
+                      ? null
+                      : _buildDefaultAvatar(otherUser),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -111,6 +182,13 @@ class _ChatDetailState extends State<ChatDetail> {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Thach dau',
+                  onPressed: targetUserId == null
+                      ? null
+                      : () => _sendChallenge(targetUserId),
+                  icon: const Icon(Icons.sports_esports),
                 ),
                 // IconButton(
                 //   icon: const Icon(Icons.more_vert),
@@ -147,6 +225,8 @@ class _ChatDetailState extends State<ChatDetail> {
                       message: message,
                       isMe: isMe,
                       showAvatar: showAvatar,
+                      avatarUrl:
+                          _resolveAvatarUrlForMessage(message, chatProvider),
                     );
                   },
                 ),
@@ -198,7 +278,11 @@ class _ChatDetailState extends State<ChatDetail> {
             CircleAvatar(
               radius: 18,
               backgroundColor: Colors.grey[300],
-              child: _buildDefaultAvatar(otherUser),
+              backgroundImage:
+                  avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+              child: avatarUrl.isNotEmpty
+                  ? null
+                  : _buildDefaultAvatar(otherUser),
             ),
             const SizedBox(width: 12),
             
@@ -220,12 +304,13 @@ class _ChatDetailState extends State<ChatDetail> {
           ],
         ),
         actions: [
-          // IconButton(
-          //   icon: const Icon(Icons.more_vert),
-          //   onPressed: () {
-              
-          //   },
-          // ),
+          IconButton(
+            tooltip: 'Thach dau',
+            onPressed: targetUserId == null
+                ? null
+                : () => _sendChallenge(targetUserId),
+            icon: const Icon(Icons.sports_esports),
+          ),
         ],
       ),
       body: content,
@@ -285,7 +370,7 @@ class _ChatDetailState extends State<ChatDetail> {
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: Colors.grey[400]!.withOpacity(0.5 + (value * 0.5)),
+            color: Colors.grey[400]!.withValues(alpha: 0.5 + (value * 0.5)),
             shape: BoxShape.circle,
           ),
         );

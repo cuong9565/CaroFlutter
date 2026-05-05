@@ -26,6 +26,7 @@ void main() async {
             challengeProvider.init();
             return challengeProvider;
           },
+          lazy: false,
         ),
       ],
       child: ProviderScope(

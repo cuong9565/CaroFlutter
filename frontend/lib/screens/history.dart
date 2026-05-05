@@ -222,9 +222,7 @@ class _HistoryState extends ConsumerState<History> {
         final wins = room['wins'] as int;
         final losses = room['losses'] as int;
         final draws = room['draws'] as int;
-        final raw = room['timeCreate'];
-        final fixed = raw.replaceFirst(' ', 'T'); // thêm chữ T
-        final time = DateTime.parse(fixed).toLocal();
+        final time = DateTime.parse(room['timeCreate']).toLocal();
         
         IconData modeIcon = FontAwesomeIcons.userGroup;
         if (gameMode == 'AI') modeIcon = FontAwesomeIcons.robot;

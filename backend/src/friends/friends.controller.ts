@@ -57,4 +57,17 @@ export class FriendController {
 		);
 		return { friend };
 	}
+
+	// /friends/remove
+	@Post('/remove')
+	async removeFriend(
+		@Body('friendRecordId') friendRecordId: string,
+		@Body('userId') userId: string,
+	) {
+		const friend = await this.friendService.removeFriend(
+			friendRecordId,
+			userId,
+		);
+		return { friend };
+	}
 }

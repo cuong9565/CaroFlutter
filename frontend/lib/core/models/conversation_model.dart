@@ -1,6 +1,7 @@
 class Conversation {
   final String id;
   final List<String> participants;
+  final List<ConversationParticipant> participantDetails;
   final Map<String, dynamic>? lastMessage;
   final List<Map<String, dynamic>> messages;
   final int unreadCount;
@@ -9,6 +10,7 @@ class Conversation {
   Conversation({
     required this.id,
     required this.participants,
+    this.participantDetails = const [],
     this.lastMessage,
     required this.messages,
     this.unreadCount = 0,
@@ -20,6 +22,12 @@ class Conversation {
     final parsedLastMessage = rawLastMessage is Map
         ? Map<String, dynamic>.from(rawLastMessage)
         : null;
+    final rawParticipantsDetail = json['participantsDetail'];
+    final parsedParticipantsDetail = rawParticipantsDetail is List
+      ? rawParticipantsDetail
+        .map((p) => ConversationParticipant.fromJson(p))
+        .toList()
+      : <ConversationParticipant>[];
 
     return Conversation(
       id: json['id'] ?? '',
@@ -32,6 +40,7 @@ class Conversation {
               ?.map((m) => m as Map<String, dynamic>)
               .toList() ??
           [],
+      participantDetails: parsedParticipantsDetail,
       unreadCount: json['unreadCount'] ?? 0,
       updatedAt: _resolveUpdatedAt(json, parsedLastMessage),
     );
@@ -69,6 +78,8 @@ class Conversation {
     return {
       'id': id,
       'participants': participants,
+      'participantsDetail':
+          participantDetails.map((p) => p.toJson()).toList(),
       'lastMessage': lastMessage,
       'messages': messages,
       'unreadCount': unreadCount,
@@ -83,9 +94,19 @@ class Conversation {
     );
   }
 
+  ConversationParticipant? getOtherParticipant(String currentUsername) {
+    for (final participant in participantDetails) {
+      if (participant.username != currentUsername) {
+        return participant;
+      }
+    }
+    return null;
+  }
+
   Conversation copyWith({
     String? id,
     List<String>? participants,
+    List<ConversationParticipant>? participantDetails,
     Map<String, dynamic>? lastMessage,
     List<Map<String, dynamic>>? messages,
     int? unreadCount,
@@ -94,10 +115,42 @@ class Conversation {
     return Conversation(
       id: id ?? this.id,
       participants: participants ?? this.participants,
+      participantDetails: participantDetails ?? this.participantDetails,
       lastMessage: lastMessage ?? this.lastMessage,
       messages: messages ?? this.messages,
       unreadCount: unreadCount ?? this.unreadCount,
       updatedAt: updatedAt ?? this.updatedAt,
     );
+  }
+}
+
+class ConversationParticipant {
+  final String id;
+  final String username;
+  final String avatarUrl;
+
+  ConversationParticipant({
+    required this.id,
+    required this.username,
+    required this.avatarUrl,
+  });
+
+  factory ConversationParticipant.fromJson(dynamic json) {
+    if (json is Map<String, dynamic>) {
+      return ConversationParticipant(
+        id: json['id']?.toString() ?? '',
+        username: json['username']?.toString() ?? '',
+        avatarUrl: json['avatar_url']?.toString() ?? '',
+      );
+    }
+    return ConversationParticipant(id: '', username: '', avatarUrl: '');
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'username': username,
+      'avatar_url': avatarUrl,
+    };
   }
 }

@@ -32,7 +32,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
-  private onlineUsers = new Map<string, Socket>();
+  public onlineUsers = new Map<string, Socket>();
   private pendingChallenges = new Map<
     string,
     { requesterId: string; targetId: string }
@@ -55,9 +55,20 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     this.gameService.OutRoom(client);
     const userId = client.handshake?.auth?.userId;
     if (typeof userId === 'string' && userId.trim().length > 0) {
-      this.onlineUsers.delete(userId);
+      if (this.onlineUsers.get(userId)?.id === client.id) {
+        this.onlineUsers.delete(userId);
+      }
     }
     // Xóa user
+  }
+
+  emitToUser(userId: string, event: string, data: any) {
+    const socket = this.onlineUsers.get(userId);
+    if (socket) {
+      socket.emit(event, data);
+      return true;
+    }
+    return false;
   }
 
   @SubscribeMessage('challenge-request')
@@ -127,6 +138,15 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const pending = this.pendingChallenges.get(roomId)!;
+    const targetSocket = this.onlineUsers.get(pending.targetId);
+    if (!targetSocket || targetSocket.id !== client.id) {
+      client.emit('challenge-error', {
+        message: 'Người nhận thách đấu đã offline',
+      });
+      this.pendingChallenges.delete(roomId);
+      return;
+    }
+
     const requesterSocket = this.onlineUsers.get(pending.requesterId);
     if (!requesterSocket) {
       client.emit('challenge-error', {

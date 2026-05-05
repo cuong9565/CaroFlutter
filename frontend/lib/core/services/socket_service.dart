@@ -146,4 +146,18 @@ class SocketService {
       callback((data as List).map((m) => Message.fromJson(m)).toList());
     });
   }
+
+  static void onFriendRequestReceived(Function(dynamic) callback) {
+    off('friend_request_received');
+    on('friend_request_received', (data) {
+      callback(data);
+    });
+  }
+
+  static void onFriendRequestAccepted(Function(dynamic) callback) {
+    off('friend_request_accepted');
+    on('friend_request_accepted', (data) {
+      callback(data);
+    });
+  }
 }

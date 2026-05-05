@@ -218,6 +218,7 @@ class ChatProvider with ChangeNotifier {
     final message = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       conversationId: conversationId,
+      senderId: _currentUserId,
       senderUsername: _currentUsername,
       content: content,
       timestamp: DateTime.now(),

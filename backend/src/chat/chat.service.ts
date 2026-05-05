@@ -243,13 +243,18 @@ export class ChatService {
     return Array.from(convMap.values()) as Conversation[];
   }
 
-  async getUserConversationsFormatted(userId: string): Promise<{ count: number; conversations: { id: string; participants: string[]; lastMessage: any; messages: any[] }[] }> {
+  async getUserConversationsFormatted(userId: string): Promise<{ count: number; conversations: { id: string; participants: string[]; participantsDetail: any[]; lastMessage: any; messages: any[] }[] }> {
     const conversations = await this.getUserConversations(userId);
     const formattedConversations = await Promise.all(conversations.map(async c => {
       const messages = await this.getMessages(c.id);
       return {
         id: c.id,
         participants: c.participants.map(p => p.username),
+        participantsDetail: c.participants.map(p => ({
+          id: p.id,
+          username: p.username,
+          avatar_url: p.avatar_url,
+        })),
         lastMessage: c.lastMessage ? {
           id: c.lastMessage.id,
           senderId: c.lastMessage.senderId,

@@ -9,5 +9,6 @@ import { DatabaseModule } from 'src/database/database.module';
 @Module({
   imports: [DatabaseModule, MatchesPlayerModule, MatchModule, UsersModule],
   providers: [GameGateWay, GameService],
+  exports: [GameGateWay],
 })
 export class GameModule {}

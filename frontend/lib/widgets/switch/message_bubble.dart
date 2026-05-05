@@ -6,12 +6,14 @@ class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isMe;
   final bool showAvatar;
+  final String avatarUrl;
 
   const MessageBubble({
     super.key,
     required this.message,
     required this.isMe,
     this.showAvatar = true,
+    this.avatarUrl = '',
   });
 
   @override
@@ -93,7 +95,8 @@ class MessageBubble extends StatelessWidget {
     return CircleAvatar(
       radius: 16,
       backgroundColor: Colors.grey[300],
-      child: _buildDefaultAvatar(),
+      backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+      child: avatarUrl.isNotEmpty ? null : _buildDefaultAvatar(),
     );
   }
 

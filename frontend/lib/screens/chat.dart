@@ -207,7 +207,12 @@ class _ChatState extends State<Chat> {
     ChatProvider chatProvider,
     bool isWide,
   ) {
-    final otherUser = conversation.getOtherUser(chatProvider.currentUsername);
+    final otherParticipant =
+      conversation.getOtherParticipant(chatProvider.currentUsername);
+    final otherUser =
+      otherParticipant?.username ??
+      conversation.getOtherUser(chatProvider.currentUsername);
+    final avatarUrl = otherParticipant?.avatarUrl ?? '';
     final hasUnread = conversation.unreadCount > 0;
     final isSelected = _selectedConversation?.id == conversation.id;
     final lastMessageContent = conversation.lastMessage?['content'] ?? '';
@@ -243,7 +248,11 @@ class _ChatState extends State<Chat> {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: Colors.grey[300],
-                  child: _buildDefaultAvatar(otherUser),
+                  backgroundImage:
+                      avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                  child: avatarUrl.isNotEmpty
+                      ? null
+                      : _buildDefaultAvatar(otherUser),
                 ),
               ],
             ),
