@@ -88,6 +88,7 @@ export type RequestCreateRoomType = {
   idRoom?: string;
   idUser: string;
   socketUser: Socket;
+  gameMode?: 'FRIEND' | 'AI' | 'ONLINE';
 };
 
 export type RoomsType = {
@@ -167,12 +168,14 @@ export type MatchType = {
 export type RequestStartGameType = {
   idRoom: string;
   idUser: string;
+  gameMode: string;
 };
 
 export type RequestParamStartGameType = {
   idRoom: string;
   idUser: string;
   socketUser: Socket;
+  gameMode?: string;
 };
 
 export type ResponseStartGameType = {
@@ -230,16 +233,28 @@ export type RequestOnMove = {
   idUser: string;
   x: number;
   y: number;
+  gameMode?: string;
 };
 
 export type BotRoomsType = {
   [idRoom: string]: {
     user: UserRequestType;
-    board: number[][];
-    userTurn: 0 | 1; // 0: user, 1: bot
-    userX: 0 | 1; // 0: user is X, 1: user is O
-    stateGame: number; // -1: playing, 0: user win, 1: user lose, 2: draw
-    idMatchDB?: string;
+    match: {
+      id: string;
+      userTurn: 0 | 1; // 0: user, 1: bot
+      userX: 0 | 1; // 0: user is X, 1: user is O
+      numMove: number;
+      board: number[][];
+      stateGame: number; // -1: playing, 0: user win, 1: user lose, 2: draw
+      lines: any[];
+      turnTimeout?: NodeJS.Timeout;
+      turnTimeoutExpiresAt?: number;
+    };
+    ratio: {
+      win: number;
+      loose: number;
+      draw: number;
+    };
   };
 };
 
@@ -256,11 +271,39 @@ export type RequestOnMoveWithBot = {
 };
 
 export type ResponseStartGameWithBotType = {
-  state: 'PLAY' | 'ERROR';
+  state: 'PLAY' | 'ERROR' | 'LOAD';
   idRoom?: string;
   yourTurn?: boolean;
   yourX?: boolean;
   board?: number[][];
+  message?: string;
+  stateGame?: number;
+  isUserReady?: number;
+  isYouReady?: number;
+  yourRation?: {
+    win: number;
+    loose: number;
+    draw: number;
+  };
+  opponentRation?: {
+    win: number;
+    loose: number;
+    draw: number;
+  };
+  opponent?: {
+    id?: string;
+    username?: string;
+    avatarUrl?: string | null;
+  };
+  you?: {
+    id?: string;
+    username?: string;
+    avatarUrl?: string | null;
+  };
+  turnDurationMs?: number;
+  turnDeadlineMs?: number;
+  boardSize?: number;
+  lines?: any[];
 };
 
 export type ResponseOnMoveWithBotType = {
@@ -269,6 +312,7 @@ export type ResponseOnMoveWithBotType = {
   y?: number;
   result?: number; // 0 => user win, 1 => user lose, 2 => draw
   lastTurn?: Cell;
+  yourTurn?: boolean;
 };
 
 export type ResponseOnMovePosition = {

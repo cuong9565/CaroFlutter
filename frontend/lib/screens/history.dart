@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:frontend/core/notifiers/user_notifier.dart';
 import 'package:frontend/core/services/history_service.dart';
 import 'package:frontend/core/providers/user_provider.dart';
 import 'package:frontend/widgets/charts/linear_chart.dart';
@@ -219,12 +218,14 @@ class _HistoryState extends ConsumerState<History> {
       itemBuilder: (context, index) {
         final room = rooms[index];
         final gameMode = room['gameMode'] as String;
-        final opponent = room['opponent'] as String;
+        final opponent = (room['opponent'] ?? 'Unknown') as String;
         final wins = room['wins'] as int;
         final losses = room['losses'] as int;
         final draws = room['draws'] as int;
-        final time = DateTime.parse(room['timeCreate']);
-
+        final raw = room['timeCreate'];
+        final fixed = raw.replaceFirst(' ', 'T'); // thêm chữ T
+        final time = DateTime.parse(fixed).toLocal();
+        
         IconData modeIcon = FontAwesomeIcons.userGroup;
         if (gameMode == 'AI') modeIcon = FontAwesomeIcons.robot;
         if (gameMode == 'ONLINE') modeIcon = FontAwesomeIcons.globe;
