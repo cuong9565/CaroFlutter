@@ -5,12 +5,14 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import type { Database } from 'src/database/database.types';
+import { GameGateWay } from 'src/game/game.gateway';
 
 @Injectable()
 export class FriendService {
     constructor(
         @Inject('POSTGRES_POOL')
-        private readonly sql: Database
+        private readonly sql: Database,
+        private readonly gameGateway: GameGateWay,
     ) { }
 
     async requestByUuid(requesterId: string, targetUuid: string) {
@@ -50,6 +52,12 @@ export class FriendService {
       values(${requesterId}, ${targetUuid}, 'pending')
       returning *
     `;
+
+        if (created[0]) {
+            this.gameGateway.emitToUser(targetUuid, 'friend_request_received', {
+                requesterId: requesterId,
+            });
+        }
 
         return created[0] ?? null;
     }
@@ -126,6 +134,11 @@ export class FriendService {
                 if (!updated[0]) {
                         throw new NotFoundException('Friend request not found');
                 }
+
+                const requesterId = updated[0].iduser_request;
+                this.gameGateway.emitToUser(requesterId, 'friend_request_accepted', {
+                    responderId: userId,
+                });
 
                 return updated[0];
         }

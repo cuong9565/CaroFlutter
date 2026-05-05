@@ -21,11 +21,9 @@ class Account extends ConsumerStatefulWidget {
 class _AccountState extends ConsumerState<Account> {
   final TextEditingController userEdit = TextEditingController();
   final TextEditingController emailEdit = TextEditingController();
-  final TextEditingController uuidEdit = TextEditingController();
 
   String _username = '';
   String _email = '';
-  String _uuid = '';
   int _totalWins = 0;
   int _totalLosses = 0;
   int _totalDraws = 0;
@@ -45,7 +43,6 @@ class _AccountState extends ConsumerState<Account> {
 
   Future<void> _loadAccountData() async {
     try {
-      final storedUid = await FlutterSecureStorage().read(key: 'uid');
       final data = await UserProvider.loadUser();
       final user = data['user'];
       if (user != null) {
@@ -55,8 +52,6 @@ class _AccountState extends ConsumerState<Account> {
             userEdit.text = _username;
             _email = user['email'] ?? '';
             emailEdit.text = _email;
-            _uuid = storedUid ?? '';
-            uuidEdit.text = _uuid;
             _totalWins = user['total_wins'] ?? 0;
             _totalLosses = user['total_losses'] ?? 0;
             _totalDraws = user['total_draws'] ?? 0;
@@ -456,26 +451,6 @@ class _AccountState extends ConsumerState<Account> {
             icon: Icons.email_outlined,
             enabled: false,
           ),
-          const SizedBox(height: 20),
-          _buildCopyField(
-            label: 'UUID',
-            controller: uuidEdit,
-            hint: 'UUID của tài khoản',
-            icon: Icons.badge_outlined,
-            onCopy: _uuid.isEmpty
-                ? null
-                : () async {
-                    await Clipboard.setData(ClipboardData(text: _uuid));
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Đã sao chép UUID'),
-                          backgroundColor: Colors.green[700],
-                        ),
-                      );
-                    }
-                  },
-          ),
         ],
         const SizedBox(height: 32),
         const Text(
@@ -521,53 +496,6 @@ class _AccountState extends ConsumerState<Account> {
             prefixIcon: Icon(icon, size: 20, color: Colors.grey[400]),
             filled: true,
             fillColor: enabled ? Colors.white : Colors.grey[50],
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[200]!),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[200]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.indigoAccent, width: 2),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCopyField({
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    VoidCallback? onCopy,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4A4A4A)),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          readOnly: true,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(icon, size: 20, color: Colors.grey[400]),
-            suffixIcon: IconButton(
-              onPressed: onCopy,
-              tooltip: 'Sao chép',
-              icon: const Icon(Icons.copy, size: 18),
-            ),
-            filled: true,
-            fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

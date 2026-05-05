@@ -4,6 +4,7 @@ import 'package:frontend/core/providers/challenge_provider.dart';
 import 'package:frontend/core/providers/user_provider.dart';
 import 'package:frontend/core/services/friend_service.dart';
 import 'package:frontend/core/providers/chat_provider.dart';
+import 'package:frontend/core/services/socket_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -29,9 +30,24 @@ class _FriendsState extends State<Friends> {
     _loadFriendsData();
   }
 
+  void _setupFriendListeners() {
+    SocketService.onFriendRequestReceived((data) {
+      if (mounted) {
+        _loadFriendsData();
+      }
+    });
+    SocketService.onFriendRequestAccepted((data) {
+      if (mounted) {
+        _loadFriendsData();
+      }
+    });
+  }
+
   @override
   void dispose() {
     _uuidController.dispose();
+    SocketService.off('friend_request_received');
+    SocketService.off('friend_request_accepted');
     super.dispose();
   }
 
@@ -67,6 +83,10 @@ class _FriendsState extends State<Friends> {
         _currentUserId = userId;
         _currentUsername = username;
       });
+
+      // Initialize socket if not already and setup listeners
+      SocketService.init(userId);
+      _setupFriendListeners();
     } catch (error) {
       if (!mounted) {
         return;

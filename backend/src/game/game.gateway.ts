@@ -32,7 +32,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
-  private onlineUsers = new Map<string, Socket>();
+  public onlineUsers = new Map<string, Socket>();
   private pendingChallenges = new Map<
     string,
     { requesterId: string; targetId: string }
@@ -55,9 +55,20 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     this.gameService.OutRoom(client);
     const userId = client.handshake?.auth?.userId;
     if (typeof userId === 'string' && userId.trim().length > 0) {
-      this.onlineUsers.delete(userId);
+      if (this.onlineUsers.get(userId)?.id === client.id) {
+        this.onlineUsers.delete(userId);
+      }
     }
     // Xóa user
+  }
+
+  emitToUser(userId: string, event: string, data: any) {
+    const socket = this.onlineUsers.get(userId);
+    if (socket) {
+      socket.emit(event, data);
+      return true;
+    }
+    return false;
   }
 
   @SubscribeMessage('challenge-request')
