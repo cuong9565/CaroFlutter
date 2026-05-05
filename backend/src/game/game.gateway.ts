@@ -13,7 +13,6 @@ import { UsersService } from 'src/users/users.service';
 import type {
   DataSendOnOutRoom,
   MovePosition,
-  RequestOnMoveWithBot,
   RequestCreateRoomType,
   RequestOnMove,
   RequestStartGameType,
@@ -217,39 +216,6 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('request-play-with-bot')
-  requestPlayWithBot(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: UserIdType,
-  ) {
-    const response = this.gameService.StartGameWithBot({
-      idUser: data.idUser,
-      socketUser: client,
-    });
-
-    client.emit('response-start-game-with-bot', response);
-  }
-
-  @SubscribeMessage('request-on-move-with-bot')
-  async requestOnMoveWithBot(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: RequestOnMoveWithBot,
-  ) {
-    const response = await this.gameService.RequestOnMoveWithBot(data);
-
-    const isBotResponse =
-      response.state === 'OK' ||
-      (response.state === 'ENDGAME' &&
-        (response.result === 1 ||
-          (response.result === 2 && response.lastTurn !== undefined)));
-
-    if (isBotResponse) {
-      await this.delay(1000);
-    }
-
-    client.emit('response-on-move-with-bot', response);
-  }
-
   @SubscribeMessage('on-move')
   handleMessageOnMove(@MessageBody() data: MovePosition) {
     const resPonseData = this.gameService.OnMove(data);
@@ -293,12 +259,15 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() data: RequestCreateRoomType,
   ) {
+    const gameMode = data.gameMode || 'FRIEND';
     const request = await this.gameService.RequestCreateRoom({
       idUser: data.idUser,
       socketUser: client,
+      gameMode: gameMode,
     });
     client.emit('response-create-room', {
       idRoom: request.idRoom,
+      gameMode: gameMode,
     });
   }
 
@@ -307,103 +276,50 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() data: RequestStartGameType,
   ) {
-    const request = await this.gameService.RequestStartGame({
-      idRoom: data.idRoom,
-      idUser: data.idUser,
-      socketUser: client,
-    });
-
-    let user0Profile: { id?: string; username?: string; avatar_url?: string } | null =
-      null;
-    let user1Profile: { id?: string; username?: string; avatar_url?: string } | null =
-      null;
-    if (
-      (request.state === 'PLAY' || request.state === 'LOAD') &&
-      request.user?.[0].idUser &&
-      request.user?.[1]?.idUser
-    ) {
-      [user0Profile, user1Profile] = await Promise.all([
-        this.usersService.getUser(request.user[0].idUser),
-        this.usersService.getUser(request.user[1].idUser!),
-      ]);
-    }
-
-    if (request.state !== 'PLAY' && request.state !== 'LOAD') {
-      client.emit('response-start-game', {
-        state: request.state,
+    const gameMode = data.gameMode || 'FRIEND';
+    if (gameMode == 'FRIEND') {
+      const request = await this.gameService.RequestStartGame({
+        idRoom: data.idRoom,
+        idUser: data.idUser,
+        socketUser: client,
       });
-      return;
-    }
 
-    if (request.state === 'PLAY') {
-      request.user![0].socketUser.emit('response-start-game', {
-        state: request.state,
-        yourTurn: request.userTurn === 0 ? true : false,
-        yourX: request.userX === 0 ? true : false,
-        isUser0X: request.userX === 0 ? true : false,
-        board: request.match?.boards,
-        stateGame: request.match?.stateGame,
-        isUserReady: request.match?.isU1Ready,
-        isYouReady: request.match?.isU0Ready,
-        yourRation: request.ratio?.[0],
-        opponentRation: request.ratio?.[1],
-        opponent: {
-          id: user1Profile?.id,
-          username: user1Profile?.username,
-          avatarUrl: user1Profile?.avatar_url,
-        },
-        you: {
-          id: user0Profile?.id,
-          username: user0Profile?.username,
-          avatarUrl: user0Profile?.avatar_url,
-        },
-        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
-        turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
-        boardSize: request.match?.boards?.length,
-        lines: [],
-      });
-      request.user![1]!.socketUser!.emit('response-start-game', {
-        state: request.state,
-        yourTurn: request.userTurn === 1 ? true : false,
-        yourX: request.userX === 1 ? true : false,
-        isUser0X: request.userX === 0 ? true : false,
-        board: request.match?.boards,
-        stateGame: request.match?.stateGame,
-        isUserReady: request.match?.isU0Ready,
-        isYouReady: request.match?.isU1Ready,
-        yourRation: request.ratio?.[1],
-        opponentRation: request.ratio?.[0],
-        opponent: {
-          id: user0Profile?.id,
-          username: user0Profile?.username,
-          avatarUrl: user0Profile?.avatar_url,
-        },
-        you: {
-          id: user1Profile?.id,
-          username: user1Profile?.username,
-          avatarUrl: user1Profile?.avatar_url,
-        },
-        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
-        turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
-        boardSize: request.match?.boards?.length,
-        lines: [],
-      });
-    } else if (request.state === 'LOAD') {
-      if (request.user?.[0].idUser === data.idUser) {
+      let user0Profile: {
+        id?: string;
+        username?: string;
+        avatar_url?: string;
+      } | null = null;
+      let user1Profile: {
+        id?: string;
+        username?: string;
+        avatar_url?: string;
+      } | null = null;
+      if (
+        (request.state === 'PLAY' || request.state === 'LOAD') &&
+        request.user?.[0].idUser &&
+        request.user?.[1]?.idUser
+      ) {
+        [user0Profile, user1Profile] = await Promise.all([
+          this.usersService.getUser(request.user[0].idUser),
+          this.usersService.getUser(request.user[1].idUser!),
+        ]);
+      }
+
+      if (request.state !== 'PLAY' && request.state !== 'LOAD') {
         client.emit('response-start-game', {
+          state: request.state,
+        });
+        return;
+      }
+
+      if (request.state === 'PLAY') {
+        request.user![0].socketUser.emit('response-start-game', {
           state: request.state,
           yourTurn: request.userTurn === 0 ? true : false,
           yourX: request.userX === 0 ? true : false,
           isUser0X: request.userX === 0 ? true : false,
           board: request.match?.boards,
-          stateGame:
-            request.match?.stateGame === -1
-              ? -1
-              : request.match?.stateGame === 2
-                ? 2
-                : request.match?.stateGame === 0
-                  ? 0
-                  : 1,
+          stateGame: request.match?.stateGame,
           isUserReady: request.match?.isU1Ready,
           isYouReady: request.match?.isU0Ready,
           yourRation: request.ratio?.[0],
@@ -421,23 +337,15 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           turnDurationMs: this.gameService.getTurnTimeLimitMs(),
           turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
           boardSize: request.match?.boards?.length,
-          lines: request.lines,
+          lines: [],
         });
-      } else if (request.user![1]!.idUser! === data.idUser) {
-        client.emit('response-start-game', {
+        request.user![1]!.socketUser!.emit('response-start-game', {
           state: request.state,
           yourTurn: request.userTurn === 1 ? true : false,
           yourX: request.userX === 1 ? true : false,
           isUser0X: request.userX === 0 ? true : false,
           board: request.match?.boards,
-          stateGame:
-            request.match?.stateGame === -1
-              ? -1
-              : request.match?.stateGame === 2
-                ? 2
-                : request.match?.stateGame === 0
-                  ? 1
-                  : 0,
+          stateGame: request.match?.stateGame,
           isUserReady: request.match?.isU0Ready,
           isYouReady: request.match?.isU1Ready,
           yourRation: request.ratio?.[1],
@@ -455,45 +363,265 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
           turnDurationMs: this.gameService.getTurnTimeLimitMs(),
           turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
           boardSize: request.match?.boards?.length,
-          lines: request.lines,
+          lines: [],
         });
+      } else if (request.state === 'LOAD') {
+        if (request.user?.[0].idUser === data.idUser) {
+          client.emit('response-start-game', {
+            state: request.state,
+            yourTurn: request.userTurn === 0 ? true : false,
+            yourX: request.userX === 0 ? true : false,
+            isUser0X: request.userX === 0 ? true : false,
+            board: request.match?.boards,
+            stateGame:
+              request.match?.stateGame === -1
+                ? -1
+                : request.match?.stateGame === 2
+                  ? 2
+                  : request.match?.stateGame === 0
+                    ? 0
+                    : 1,
+            isUserReady: request.match?.isU1Ready,
+            isYouReady: request.match?.isU0Ready,
+            yourRation: request.ratio?.[0],
+            opponentRation: request.ratio?.[1],
+            opponent: {
+              id: user1Profile?.id,
+              username: user1Profile?.username,
+              avatarUrl: user1Profile?.avatar_url,
+            },
+            you: {
+              id: user0Profile?.id,
+              username: user0Profile?.username,
+              avatarUrl: user0Profile?.avatar_url,
+            },
+            turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+            turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+            boardSize: request.match?.boards?.length,
+            lines: request.lines,
+          });
+        } else if (request.user![1]!.idUser! === data.idUser) {
+          client.emit('response-start-game', {
+            state: request.state,
+            yourTurn: request.userTurn === 1 ? true : false,
+            yourX: request.userX === 1 ? true : false,
+            isUser0X: request.userX === 0 ? true : false,
+            board: request.match?.boards,
+            stateGame:
+              request.match?.stateGame === -1
+                ? -1
+                : request.match?.stateGame === 2
+                  ? 2
+                  : request.match?.stateGame === 0
+                    ? 1
+                    : 0,
+            isUserReady: request.match?.isU0Ready,
+            isYouReady: request.match?.isU1Ready,
+            yourRation: request.ratio?.[1],
+            opponentRation: request.ratio?.[0],
+            opponent: {
+              id: user0Profile?.id,
+              username: user0Profile?.username,
+              avatarUrl: user0Profile?.avatar_url,
+            },
+            you: {
+              id: user1Profile?.id,
+              username: user1Profile?.username,
+              avatarUrl: user1Profile?.avatar_url,
+            },
+            turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+            turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+            boardSize: request.match?.boards?.length,
+            lines: request.lines,
+          });
+        }
       }
+      return;
+    }
+
+    if (gameMode == 'AI') {
+      const request = await this.gameService.RequestStartGame({
+        idRoom: data.idRoom,
+        idUser: data.idUser,
+        socketUser: client,
+        gameMode: gameMode,
+      });
+
+      let user0Profile: {
+        id?: string;
+        username?: string;
+        avatar_url?: string;
+      } | null = null;
+      let user1Profile: {
+        id?: null;
+        username?: null;
+        avatar_url?: null;
+      } | null = null;
+
+      if (
+        (request.state === 'PLAY' || request.state === 'LOAD') &&
+        request.user?.[0].idUser
+      ) {
+        [user0Profile] = await Promise.all([
+          this.usersService.getUser(request.user[0].idUser),
+        ]);
+      }
+
+      if (request.state !== 'PLAY' && request.state !== 'LOAD') {
+        client.emit('response-start-game', {
+          state: request.state,
+        });
+        return;
+      }
+
+      if (request.state === 'PLAY') {
+        request.user![0].socketUser.emit('response-start-game', {
+          state: request.state,
+          yourTurn: request.userTurn === 0 ? true : false,
+          yourX: request.userX === 0 ? true : false,
+          isUser0X: request.userX === 0 ? true : false,
+          board: request.match?.boards,
+          stateGame: request.match?.stateGame,
+          isUserReady: request.match?.isU1Ready,
+          isYouReady: request.match?.isU0Ready,
+          yourRation: request.ratio?.[0],
+          opponentRation: request.ratio?.[1],
+          opponent: {
+            id: null,
+            username: 'Bot',
+            avatarUrl: null,
+          },
+          you: {
+            id: user0Profile?.id,
+            username: user0Profile?.username,
+            avatarUrl: user0Profile?.avatar_url,
+          },
+          turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+          turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+          boardSize: request.match?.boards?.length,
+          lines: [],
+        });
+
+        // Nếu AI đi trước
+        if (request.userTurn == 1) {
+          const resPonseData = await this.gameService.process_ai_first_move(
+            data.idRoom,
+          );
+          if (resPonseData.state === 'OK') {
+            resPonseData.socketUser!.emit('response-on-move', {
+              x: resPonseData.x,
+              y: resPonseData.y,
+              turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+              turnDeadlineMs: resPonseData.turnDeadlineMs,
+            });
+          } else if (resPonseData.state === 'ENDGAME') {
+            resPonseData.client1!.socket.emit('response-on-move', {
+              state: resPonseData.state,
+              result: resPonseData.client1?.result,
+              lines: resPonseData.lines,
+              lastTurn: resPonseData.lastTurn,
+              yourRation: resPonseData.ratio?.[0],
+              opponentRation: resPonseData.ratio?.[1],
+            });
+          }
+        }
+      } else if (request.state === 'LOAD') {
+        if (request.user?.[0].idUser === data.idUser) {
+          client.emit('response-start-game', {
+            state: request.state,
+            yourTurn: request.userTurn === 0 ? true : false,
+            yourX: request.userX === 0 ? true : false,
+            isUser0X: request.userX === 0 ? true : false,
+            board: request.match?.boards,
+            stateGame:
+              request.match?.stateGame === -1
+                ? -1
+                : request.match?.stateGame === 2
+                  ? 2
+                  : request.match?.stateGame === 0
+                    ? 0
+                    : 1,
+            isUserReady: request.match?.isU1Ready,
+            isYouReady: request.match?.isU0Ready,
+            yourRation: request.ratio?.[0],
+            opponentRation: request.ratio?.[1],
+            opponent: {
+              id: null,
+              username: 'Bot',
+              avatarUrl: null,
+            },
+            you: {
+              id: user0Profile?.id,
+              username: user0Profile?.username,
+              avatarUrl: user0Profile?.avatar_url,
+            },
+            turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+            turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+            boardSize: request.match?.boards?.length,
+            lines: request.lines,
+          });
+        }
+      }
+      return;
     }
   }
 
   @SubscribeMessage('request-on-move')
   async requestOnMove(@MessageBody() data: RequestOnMove) {
-    const resPonseData = await this.gameService.RequestOnMove(data);
-    if (resPonseData.state === 'OK') {
-      resPonseData.socketUser!.emit('response-on-move', {
-        x: resPonseData.x,
-        y: resPonseData.y,
-        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
-        turnDeadlineMs: resPonseData.turnDeadlineMs,
-      });
-    } else if (resPonseData.state === 'ENDGAME') {
-      resPonseData.client1!.socket.emit('response-on-move', {
-        state: resPonseData.state,
-        result: resPonseData.client1?.result,
-        lines: resPonseData.lines,
-        lastTurn: resPonseData.lastTurn,
-        yourRation: resPonseData.ratio?.[0],
-        opponentRation: resPonseData.ratio?.[1],
-      });
-      resPonseData.client2!.socket.emit('response-on-move', {
-        state: resPonseData.state,
-        result: resPonseData.client2?.result,
-        lines: resPonseData.lines,
-        lastTurn: resPonseData.lastTurn,
-        yourRation: resPonseData.ratio?.[1],
-        opponentRation: resPonseData.ratio?.[0],
-      });
+    const gameMode = data.gameMode || 'FRIEND';
+    if (gameMode == 'FRIEND') {
+      const resPonseData = await this.gameService.RequestOnMove(data, 'FRIEND');
+      if (resPonseData.state === 'OK') {
+        resPonseData.socketUser!.emit('response-on-move', {
+          x: resPonseData.x,
+          y: resPonseData.y,
+          turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+          turnDeadlineMs: resPonseData.turnDeadlineMs,
+        });
+      } else if (resPonseData.state === 'ENDGAME') {
+        resPonseData.client1!.socket.emit('response-on-move', {
+          state: resPonseData.state,
+          result: resPonseData.client1?.result,
+          lines: resPonseData.lines,
+          lastTurn: resPonseData.lastTurn,
+          yourRation: resPonseData.ratio?.[0],
+          opponentRation: resPonseData.ratio?.[1],
+        });
+        resPonseData.client2!.socket.emit('response-on-move', {
+          state: resPonseData.state,
+          result: resPonseData.client2?.result,
+          lines: resPonseData.lines,
+          lastTurn: resPonseData.lastTurn,
+          yourRation: resPonseData.ratio?.[1],
+          opponentRation: resPonseData.ratio?.[0],
+        });
+      }
+    } else {
+      const resPonseData = await this.gameService.RequestOnMove(data, 'AI');
+      if (resPonseData.state === 'OK') {
+        resPonseData.socketUser!.emit('response-on-move', {
+          x: resPonseData.x,
+          y: resPonseData.y,
+          turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+          turnDeadlineMs: resPonseData.turnDeadlineMs,
+        });
+      } else if (resPonseData.state === 'ENDGAME') {
+        resPonseData.client1!.socket.emit('response-on-move', {
+          state: resPonseData.state,
+          result: resPonseData.client1?.result,
+          lines: resPonseData.lines,
+          lastTurn: resPonseData.lastTurn,
+          yourRation: resPonseData.ratio?.[0],
+          opponentRation: resPonseData.ratio?.[1],
+        });
+      }
     }
   }
 
   @SubscribeMessage('request-out-room')
   async requestOutRoom(@MessageBody() data: RequestStartGameType) {
-    const response = await this.gameService.RequestOutRoom(data);
+    const gameMode = data.gameMode || 'FRIEND';
+    const response = await this.gameService.RequestOutRoom(data, gameMode);
     for (let i = 0; i < response.users.length; i++) {
       response?.users[i]?.emit('response-out-room');
     }
@@ -501,69 +629,133 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('request-playagain')
   async requestPlayagain(@MessageBody() data: RequestStartGameType) {
-    const request = await this.gameService.RequestPlayagain(data);
-    if (request.state === 'PLAY') {
-      const [user0Profile, user1Profile] = await Promise.all([
-        this.usersService.getUser(request.user![0].idUser),
-        this.usersService.getUser(request.user![1]!.idUser!),
-      ]);
+    const gameMode = data.gameMode || 'FRIEND';
+    if (gameMode == 'FRIEND') {
+      const request = await this.gameService.RequestPlayagain(data, 'FRIEND');
+      if (request.state === 'PLAY') {
+        const [user0Profile, user1Profile] = await Promise.all([
+          this.usersService.getUser(request.user![0].idUser),
+          this.usersService.getUser(request.user![1]!.idUser!),
+        ]);
 
-      request.user![0].socketUser.emit('response-start-game', {
-        state: request.state,
-        yourTurn: request.userTurn === 0 ? true : false,
-        yourX: request.userX === 0 ? true : false,
-        isUser0X: request.userX === 0 ? true : false,
-        board: request.match?.boards,
-        stateGame: request.match?.stateGame,
-        isUserReady: request.match?.isU1Ready,
-        isYouReady: request.match?.isU0Ready,
-        yourRation: request.ratio?.[0],
-        opponentRation: request.ratio?.[1],
-        opponent: {
-          id: user1Profile?.id,
-          username: user1Profile?.username,
-          avatarUrl: user1Profile?.avatar_url,
-        },
-        you: {
-          id: user0Profile?.id,
-          username: user0Profile?.username,
-          avatarUrl: user0Profile?.avatar_url,
-        },
-        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
-        turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
-        boardSize: request.match?.boards?.length,
-        lines: [],
-      });
-      request.user![1]!.socketUser!.emit('response-start-game', {
-        state: request.state,
-        yourTurn: request.userTurn === 1 ? true : false,
-        yourX: request.userX === 1 ? true : false,
-        isUser0X: request.userX === 0 ? true : false,
-        board: request.match?.boards,
-        stateGame: request.match?.stateGame,
-        isUserReady: request.match?.isU0Ready,
-        isYouReady: request.match?.isU1Ready,
-        yourRation: request.ratio?.[1],
-        opponentRation: request.ratio?.[0],
-        opponent: {
-          id: user0Profile?.id,
-          username: user0Profile?.username,
-          avatarUrl: user0Profile?.avatar_url,
-        },
-        you: {
-          id: user1Profile?.id,
-          username: user1Profile?.username,
-          avatarUrl: user1Profile?.avatar_url,
-        },
-        turnDurationMs: this.gameService.getTurnTimeLimitMs(),
-        turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
-        boardSize: request.match?.boards?.length,
-        lines: [],
-      });
-    } else if (request.state === 'ALERT') {
-      request.socket?.emit('response-playagain', {
-        state: request.state,
-      });
+        request.user![0].socketUser.emit('response-start-game', {
+          state: request.state,
+          yourTurn: request.userTurn === 0 ? true : false,
+          yourX: request.userX === 0 ? true : false,
+          isUser0X: request.userX === 0 ? true : false,
+          board: request.match?.boards,
+          stateGame: request.match?.stateGame,
+          isUserReady: request.match?.isU1Ready,
+          isYouReady: request.match?.isU0Ready,
+          yourRation: request.ratio?.[0],
+          opponentRation: request.ratio?.[1],
+          opponent: {
+            id: user1Profile?.id,
+            username: user1Profile?.username,
+            avatarUrl: user1Profile?.avatar_url,
+          },
+          you: {
+            id: user0Profile?.id,
+            username: user0Profile?.username,
+            avatarUrl: user0Profile?.avatar_url,
+          },
+          turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+          turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+          boardSize: request.match?.boards?.length,
+          lines: [],
+        });
+        request.user![1]!.socketUser!.emit('response-start-game', {
+          state: request.state,
+          yourTurn: request.userTurn === 1 ? true : false,
+          yourX: request.userX === 1 ? true : false,
+          isUser0X: request.userX === 0 ? true : false,
+          board: request.match?.boards,
+          stateGame: request.match?.stateGame,
+          isUserReady: request.match?.isU0Ready,
+          isYouReady: request.match?.isU1Ready,
+          yourRation: request.ratio?.[1],
+          opponentRation: request.ratio?.[0],
+          opponent: {
+            id: user0Profile?.id,
+            username: user0Profile?.username,
+            avatarUrl: user0Profile?.avatar_url,
+          },
+          you: {
+            id: user1Profile?.id,
+            username: user1Profile?.username,
+            avatarUrl: user1Profile?.avatar_url,
+          },
+          turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+          turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+          boardSize: request.match?.boards?.length,
+          lines: [],
+        });
+      } else if (request.state === 'ALERT') {
+        request.socket?.emit('response-playagain', {
+          state: request.state,
+        });
+      }
+    } else {
+      const request = await this.gameService.RequestPlayagain(data, 'AI');
+      if (request.state === 'PLAY') {
+        const [user0Profile] = await Promise.all([
+          this.usersService.getUser(request.user![0].idUser),
+        ]);
+
+        request.user![0].socketUser.emit('response-start-game', {
+          state: request.state,
+          yourTurn: request.userTurn === 0 ? true : false,
+          yourX: request.userX === 0 ? true : false,
+          isUser0X: request.userX === 0 ? true : false,
+          board: request.match?.boards,
+          stateGame: request.match?.stateGame,
+          isUserReady: request.match?.isU1Ready,
+          isYouReady: request.match?.isU0Ready,
+          yourRation: request.ratio?.[0],
+          opponentRation: request.ratio?.[1],
+          opponent: {
+            id: null,
+            username: 'AI',
+            avatarUrl: null,
+          },
+          you: {
+            id: user0Profile?.id,
+            username: user0Profile?.username,
+            avatarUrl: user0Profile?.avatar_url,
+          },
+          turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+          turnDeadlineMs: request.match?.turnTimeoutExpiresAt,
+          boardSize: request.match?.boards?.length,
+          lines: [],
+        });
+
+        if (request.userTurn == 1) {
+          const resPonseData = await this.gameService.process_ai_first_move(
+            data.idRoom,
+          );
+          if (resPonseData.state === 'OK') {
+            resPonseData.socketUser!.emit('response-on-move', {
+              x: resPonseData.x,
+              y: resPonseData.y,
+              turnDurationMs: this.gameService.getTurnTimeLimitMs(),
+              turnDeadlineMs: resPonseData.turnDeadlineMs,
+            });
+          } else if (resPonseData.state === 'ENDGAME') {
+            resPonseData.client1!.socket.emit('response-on-move', {
+              state: resPonseData.state,
+              result: resPonseData.client1?.result,
+              lines: resPonseData.lines,
+              lastTurn: resPonseData.lastTurn,
+              yourRation: resPonseData.ratio?.[0],
+              opponentRation: resPonseData.ratio?.[1],
+            });
+          }
+        }
+      } else if (request.state === 'ALERT') {
+        request.socket?.emit('response-playagain', {
+          state: request.state,
+        });
+      }
     }
   }
 }

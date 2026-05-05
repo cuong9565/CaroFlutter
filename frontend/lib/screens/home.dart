@@ -101,8 +101,35 @@ class _GameMode extends ConsumerState<GameMode> {
         final userId = _getUserId(next.value);
         if (userId == null) return;
         _ensureSocketReady(userId);
+        SocketService.emit('request-create-room', {'idUser': userId});
+      });
+
+      // Khi widget được khởi tạo
+      final current = ref.read(userNotifier);
+      final userId = _getUserId(current.value);
+      if (userId != null) {
+        _ensureSocketReady(userId);
+        SocketService.emit('request-create-room', {'idUser': userId});
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.white,
+        builder: (context) {
+          return MyLoading(text: "");
+        },
+      );
+    },
+    (BuildContext context) {
+      // Lắng nghe khi userNotifier thay đổi
+      ref.listenManual(userNotifier, (previous, next) {
+        final userId = _getUserId(next.value);
+        if (userId == null) return;
+        _ensureSocketReady(userId);
         SocketService.emit('request-create-room', {
           'idUser': userId,
+          'gameMode': 'AI',
         });
       });
 
@@ -113,6 +140,7 @@ class _GameMode extends ConsumerState<GameMode> {
         _ensureSocketReady(userId);
         SocketService.emit('request-create-room', {
           'idUser': userId,
+          'gameMode': 'AI',
         });
       }
 
@@ -126,14 +154,11 @@ class _GameMode extends ConsumerState<GameMode> {
       );
     },
     (BuildContext context) {
-      context.go('/game-machine');
-    },
-    (BuildContext context) {
       context.go('/game-online');
     },
   ];
   // Danh sách chức năng cho nút trợ giúp
-  final List<void Function(BuildContext)> _functionHelper = [
+  List<void Function(BuildContext)> get _functionHelper => [
     (BuildContext btnContext) {
       final List<String> txts = [
         "Chơi cùng một người bạn",
@@ -143,8 +168,12 @@ class _GameMode extends ConsumerState<GameMode> {
       _funtionHelperLayout(btnContext, 110, "Chơi với một người bạn", txts);
     },
     (BuildContext btnContext) {
-      final List<String> txts = ["Chơi với máy"];
-      _funtionHelperLayout(btnContext, 60, "Chơi với máy", txts);
+      final List<String> txts = [
+        "Chơi với máy",
+        "+ Chơi với máy có độ khó khác nhau",
+        "+ Cải thiện kỹ năng chơi cờ",
+      ];
+      _funtionHelperLayout(btnContext, 110, "Chơi với máy", txts);
     },
     (BuildContext btnContext) {
       final List<String> txts = [
@@ -193,7 +222,13 @@ class _GameMode extends ConsumerState<GameMode> {
     SocketService.once('response-create-room', (data) {
       if (!mounted) return;
       final String idRoom = data['idRoom'];
-      context.go('/play/$idRoom');
+      final String gameMode = data['gameMode'] ?? 'FRIEND';
+
+      if (gameMode == 'AI') {
+        context.go('/play-ai/$idRoom');
+      } else {
+        context.go('/play/$idRoom');
+      }
     });
   }
 
@@ -546,4 +581,5 @@ void _funtionHelperLayout(
 void _navigateToPlayWithFriend(BuildContext context) {
   context.go('/game');
 }
+
 //

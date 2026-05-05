@@ -15,8 +15,7 @@ import 'package:frontend/widgets/layout/my_error.dart';
 import 'package:frontend/widgets/main_layout.dart';
 import 'package:go_router/go_router.dart';
 
-final GlobalKey<NavigatorState> rootNavigatorKey =
-    GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter router = GoRouter(
   navigatorKey: rootNavigatorKey,
@@ -47,10 +46,6 @@ final GoRouter router = GoRouter(
       builder: (_, _) => const SafeArea(child: Scaffold(body: GameOnline())),
     ),
     GoRoute(
-      path: '/game-machine',
-      builder: (_, _) => const SafeArea(child: Scaffold(body: GameMachine())),
-    ),
-    GoRoute(
       path: '/login',
       builder: (_, _) => const SafeArea(child: Scaffold(body: Login())),
     ),
@@ -62,9 +57,7 @@ final GoRouter router = GoRouter(
       path: '/history/:roomId',
       builder: (context, state) {
         final roomId = state.pathParameters['roomId']!;
-        return SafeArea(
-          child: HistoryDetail(roomId: roomId),
-        );
+        return SafeArea(child: HistoryDetail(roomId: roomId));
       },
     ),
     GoRoute(
@@ -73,6 +66,15 @@ final GoRouter router = GoRouter(
         final idRoom = state.pathParameters['idRoom']!;
         return SafeArea(
           child: Scaffold(body: PlayWithFriend(idRoom: idRoom)),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/play-ai/:idRoom',
+      builder: (context, state) {
+        final idRoom = state.pathParameters['idRoom']!;
+        return SafeArea(
+          child: Scaffold(body: GameMachine(idRoom: idRoom)),
         );
       },
     ),

@@ -29,18 +29,19 @@ CREATE TABLE "login_by_gg" (
 );
 CREATE TABLE "match" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-	"id_matches_player" uuid NOT NULL REFERENCES "matches_player"("id"),
-	"winner_id" uuid REFERENCES "users"("id"), -- NULL if draw or ongoing
+	"id_matches_player" uuid NOT NULL,
+	"time_create" timestamp with time zone DEFAULT now() NOT NULL,
+	"winner_id" uuid,
 	"is_draw" boolean DEFAULT false,
-	"time_create" timestamp with time zone DEFAULT now() NOT NULL
+	"is_ai_win" boolean DEFAULT false
 );
 CREATE TABLE "matches_player" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"iduser_request" uuid NOT NULL,
 	"iduser_response" uuid,
 	"is_ranking" boolean NOT NULL,
-	"game_mode" varchar(255) DEFAULT 'FRIEND' NOT NULL,
 	"time_create" timestamp DEFAULT now() NOT NULL,
+	"game_mode" varchar(255) DEFAULT 'FRIEND' NOT NULL,
 	CONSTRAINT "matches_player_game_mode_check" CHECK (((game_mode)::text = ANY ((ARRAY['FRIEND'::character varying, 'AI'::character varying, 'ONLINE'::character varying])::text[])))
 );
 CREATE TABLE "messages" (
@@ -48,14 +49,14 @@ CREATE TABLE "messages" (
 	"conversation_id" integer NOT NULL,
 	"sender_id" uuid NOT NULL,
 	"content" text NOT NULL,
-	"timestamp" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"timestamp" timestamp NOT NULL,
 	"is_read" boolean DEFAULT false NOT NULL
 );
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"username" varchar(255) NOT NULL,
 	"type_login" integer DEFAULT 0 NOT NULL,
-	"avatar_url" varchar(255),
+	"avatar_url" text,
 	"rating" numeric(8, 2) DEFAULT '0' NOT NULL,
 	"total_matches" integer DEFAULT 0 NOT NULL,
 	"total_wins" integer DEFAULT 0 NOT NULL,
@@ -83,7 +84,9 @@ ALTER TABLE "conversation_participants" ADD CONSTRAINT "fk_cp_conversation" FORE
 ALTER TABLE "conversation_participants" ADD CONSTRAINT "fk_cp_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
 ALTER TABLE "friends" ADD CONSTRAINT "friends_iduser_request_foreign" FOREIGN KEY ("iduser_request") REFERENCES "users"("id");
 ALTER TABLE "friends" ADD CONSTRAINT "friends_iduser_response_foreign" FOREIGN KEY ("iduser_response") REFERENCES "users"("id");
+ALTER TABLE "match" ADD CONSTRAINT "match_id_matches_player_fkey" FOREIGN KEY ("id_matches_player") REFERENCES "matches_player"("id");
 ALTER TABLE "match" ADD CONSTRAINT "match_id_matches_player_foreign" FOREIGN KEY ("id_matches_player") REFERENCES "matches_player"("id");
+ALTER TABLE "match" ADD CONSTRAINT "match_winner_id_fkey" FOREIGN KEY ("winner_id") REFERENCES "users"("id");
 ALTER TABLE "matches_player" ADD CONSTRAINT "matches_player_iduser_request_foreign" FOREIGN KEY ("iduser_request") REFERENCES "users"("id");
 ALTER TABLE "matches_player" ADD CONSTRAINT "matches_player_iduser_response_foreign" FOREIGN KEY ("iduser_response") REFERENCES "users"("id");
 ALTER TABLE "messages" ADD CONSTRAINT "fk_messages_conversation" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE;
