@@ -1881,7 +1881,7 @@ export class GameService {
       };
     };
   }> {
-    if (gameMode == 'FRIEND') {
+    if (gameMode == 'FRIEND' || gameMode == 'ONLINE') {
       const idUser = data.idUser;
       const idRoom = data.idRoom;
 
