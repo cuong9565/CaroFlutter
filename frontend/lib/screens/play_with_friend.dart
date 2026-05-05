@@ -380,136 +380,154 @@ class _PlayWithFriendState extends ConsumerState<PlayWithFriend> {
           Column(
             children: [
         Frame(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  yourX
-                      ? const MyCustomPaintX(size: 25)
-                      : const MyCustomPaintO(size: 25),
-                ],
-              ),
-              Row(
-                spacing: 10,
-                mainAxisAlignment: MainAxisAlignment.center,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final isSmallScreen = screenWidth < 600;
+              
+              // Responsive sizing
+              double iconSize = isSmallScreen ? 20.0 : 25.0;
+              double avatarSize = isSmallScreen ? 30.0 : 40.0;
+              double nameFontSize = isSmallScreen ? 12.0 : 16.0;
+              double statusFontSize = isSmallScreen ? 10.0 : 12.0;
+              double scoreFontSize = isSmallScreen ? 24.0 : 32.0;
+              double spacing = isSmallScreen ? 6.0 : 10.0;
+              double timerSpacing = isSmallScreen ? 4.0 : 6.0;
+              
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Column(
-                    spacing: 0,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  Row(
                     children: [
-                      Text(
-                        currentUserDisplayName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w300,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            currentUserStatus,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.black,
-                            ),
-                          ),
-                          if (isYourTimerRunning) ...[
-                            const SizedBox(width: 6),
-                            _buildTimerChip(
-                              pieceLabel: yourPiece,
-                              seconds: remainingTurnSeconds,
-                            ),
-                          ],
-                        ],
-                      ),
+                      yourX
+                          ? MyCustomPaintX(size: iconSize)
+                          : MyCustomPaintO(size: iconSize),
                     ],
                   ),
-                  PlayerAvatar(
-                    name: currentUserName,
-                    avatarUrl: currentUserAvatarUrl,
-                    size: 40,
-                  ),
-                  Text(
-                    yourRationWin.toString(),
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  Text(
-                    ":",
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  Text(
-                    opponentRationWin.toString(),
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  PlayerAvatar(
-                    name: opponentName,
-                    avatarUrl: opponentAvatarUrl,
-                    size: 40,
-                  ),
-                  Column(
-                    spacing: 0,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        opponentDisplayName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w300,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            opponentStatus,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.black,
+                  Expanded(
+                    child: Row(
+                      spacing: spacing,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Column(
+                          spacing: 0,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              isSmallScreen ? "(Bạn)" : currentUserDisplayName,
+                              style: TextStyle(
+                                fontSize: nameFontSize,
+                                fontWeight: FontWeight.w300,
+                                color: Colors.black,
+                              ),
                             ),
-                          ),
-                          if (isOpponentTimerRunning) ...[
-                            const SizedBox(width: 6),
-                            _buildTimerChip(
-                              pieceLabel: opponentPiece,
-                              seconds: remainingTurnSeconds,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  currentUserStatus,
+                                  style: TextStyle(
+                                    fontSize: statusFontSize,
+                                    fontWeight: FontWeight.w300,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                if (isYourTimerRunning) ...[
+                                  SizedBox(width: timerSpacing),
+                                  _buildTimerChip(
+                                    pieceLabel: yourPiece,
+                                    seconds: remainingTurnSeconds,
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
-                        ],
-                      ),
+                        ),
+                        PlayerAvatar(
+                          name: currentUserName,
+                          avatarUrl: currentUserAvatarUrl,
+                          size: avatarSize,
+                        ),
+                        Text(
+                          yourRationWin.toString(),
+                          style: TextStyle(
+                            fontSize: scoreFontSize,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          ":",
+                          style: TextStyle(
+                            fontSize: scoreFontSize,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          opponentRationWin.toString(),
+                          style: TextStyle(
+                            fontSize: scoreFontSize,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        PlayerAvatar(
+                          name: opponentName,
+                          avatarUrl: opponentAvatarUrl,
+                          size: avatarSize,
+                        ),
+                        Column(
+                          spacing: 0,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isSmallScreen ? "(Đối thủ)" : opponentDisplayName,
+                              style: TextStyle(
+                                fontSize: nameFontSize,
+                                fontWeight: FontWeight.w300,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  opponentStatus,
+                                  style: TextStyle(
+                                    fontSize: statusFontSize,
+                                    fontWeight: FontWeight.w300,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                if (isOpponentTimerRunning) ...[
+                                  SizedBox(width: timerSpacing),
+                                  _buildTimerChip(
+                                    pieceLabel: opponentPiece,
+                                    seconds: remainingTurnSeconds,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      !yourX
+                          ? MyCustomPaintX(size: iconSize)
+                          : MyCustomPaintO(size: iconSize),
                     ],
                   ),
                 ],
-              ),
-              Row(
-                children: [
-                  !yourX
-                      ? const MyCustomPaintX(size: 25)
-                      : const MyCustomPaintO(size: 25),
-                ],
-              ),
-            ],
+              );
+            },
           ),
         ),
         const MyDivider(),

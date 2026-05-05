@@ -35,7 +35,7 @@ export class GameService {
   private RoomsOnlineGame: RoomsOnlineGameType = {};
   private Rooms: RoomsType = {};
   private TIME_LIMIT: number = 30 * 1000; // 30 giây
-  private readonly DEFAULT_BOARD_SIZE = 5;
+  private readonly DEFAULT_BOARD_SIZE = 16;
   private readonly MIN_BOARD_SIZE = 10;
   private readonly MAX_BOARD_SIZE = 50;
   private boardSizeCache = this.DEFAULT_BOARD_SIZE;

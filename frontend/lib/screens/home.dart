@@ -39,14 +39,14 @@ class Home extends StatelessWidget {
                     Expanded(
                       child: Column(
                         spacing: 10,
-                        children: [GameMode(), _Ranking()],
+                        children: [GameMode()],
                       ),
                     ),
                     Container(
                       constraints: BoxConstraints(maxWidth: 300),
                       child: Column(
                         spacing: 10,
-                        children: [_GameProcess(), _GameRules()],
+                        children: [_GameRules()],
                       ),
                     ),
                   ],
@@ -57,8 +57,6 @@ class Home extends StatelessWidget {
                 spacing: 20,
                 children: [
                   GameMode(),
-                  _Ranking(),
-                  _GameProcess(),
                   _GameRules(),
                 ],
               ));
@@ -214,15 +212,13 @@ class _GameMode extends ConsumerState<GameMode> {
       final List<String> txts = [
         "Chơi cùng một người bạn",
         "+ Thông qua đường link (hoặc mã QR)",
-        "+ Thông qua danh sách bạn bè",
       ];
       _funtionHelperLayout(btnContext, 110, "Chơi với một người bạn", txts);
     },
     (BuildContext btnContext) {
       final List<String> txts = [
         "Chơi với máy",
-        "+ Chơi với máy có độ khó khác nhau",
-        "+ Cải thiện kỹ năng chơi cờ",
+        "+ Chơi cùng với một ai đơn giản",
       ];
       _funtionHelperLayout(btnContext, 110, "Chơi với máy", txts);
     },
@@ -391,165 +387,6 @@ class _GameMode extends ConsumerState<GameMode> {
           ),
         );
       },
-    );
-  }
-}
-
-class _Ranking extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        spacing: 20,
-        children: [
-          Row(
-            spacing: 10,
-            children: [
-              Icon(FontAwesomeIcons.trophy, color: Colors.orange, size: 30),
-              Text(
-                "Bảng xếp hạng",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          SizedBox(
-            width: double.infinity,
-            child: DataTable(
-              horizontalMargin: 0,
-              showCheckboxColumn: false,
-              columnSpacing: 8,
-              columns: [
-                DataColumn(
-                  label: Text("Hạng", style: TextStyle()),
-                  headingRowAlignment: MainAxisAlignment.start,
-                ),
-                DataColumn(
-                  label: Text("Người chơi", style: TextStyle()),
-                  headingRowAlignment: MainAxisAlignment.start,
-                ),
-                DataColumn(
-                  label: Text("W/L/D/Rate", style: TextStyle()),
-                  headingRowAlignment: MainAxisAlignment.end,
-                ),
-              ],
-              rows: [
-                for (int i = 0; i < 10; i++)
-                  DataRow(
-                    onSelectChanged: (indexSelected) {
-                      print(indexSelected);
-                    },
-                    cells: [
-                      DataCell(Text("#1", style: TextStyle())),
-                      DataCell(
-                        Row(
-                          children: [Icon(Icons.abc_outlined), Text("Player1")],
-                        ),
-                      ),
-                      DataCell(
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text("150/45/5/76.9%", style: TextStyle()),
-                        ),
-                      ),
-                    ],
-                  ),
-                DataRow(
-                  onSelectChanged: (indexSelected) {
-                    print(indexSelected);
-                  },
-                  cells: [
-                    DataCell(Text("#999", style: TextStyle())),
-                    DataCell(
-                      Row(children: [Icon(Icons.abc_outlined), Text("Me")]),
-                    ),
-                    DataCell(
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text("150/45/5/76.9%", style: TextStyle()),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Khung chứa tiến trình trò chơi
-class _GameProcess extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        spacing: 10,
-        children: [
-          Row(
-            spacing: 10,
-            children: [
-              Icon(FontAwesomeIcons.chartLine, color: Colors.green, size: 30),
-              Text(
-                "Tiến trình trò chơi",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          CircleChart(number: 45, total: 70),
-          LinearChart(
-            title: "Thắng",
-            number: 45,
-            total: 70,
-            color: Colors.green,
-          ),
-          LinearChart(title: "Thua", number: 20, total: 70, color: Colors.red),
-          LinearChart(title: "Hòa", number: 5, total: 70, color: Colors.orange),
-          Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Số trận:",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              Text(
-                "70",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
