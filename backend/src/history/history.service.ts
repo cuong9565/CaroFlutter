@@ -77,7 +77,7 @@ async getMatchHistory(userId: string) {
     SELECT 
       mp.id,
       mp.game_mode,
-      mp.time_create,
+      TO_CHAR(mp.time_create AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as time_create,
 
       COALESCE(u_req.username, 'Unknown') as request_username,
       COALESCE(u_res.username, 'Unknown') as response_username,
@@ -151,7 +151,7 @@ async getMatchHistory(userId: string) {
     const matches = await this.sql`
       SELECT 
         m.id,
-        m.time_create,
+        TO_CHAR(m.time_create AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as time_create,
         m.winner_id,
         m.is_draw,
         m.is_ai_win

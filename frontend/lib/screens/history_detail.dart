@@ -77,7 +77,7 @@ class _HistoryDetailState extends ConsumerState<HistoryDetail> {
                     itemBuilder: (context, index) {
                       final match = _matches![index];
                       final result = match['result'] as String;
-                      final time = DateTime.parse(match['timeCreate']);
+                      final time = DateTime.parse(match['timeCreate']).toLocal();
 
                       Color resultColor = Colors.grey;
                       IconData resultIcon = FontAwesomeIcons.minus;
