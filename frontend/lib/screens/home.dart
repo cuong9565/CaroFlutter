@@ -154,7 +154,58 @@ class _GameMode extends ConsumerState<GameMode> {
       );
     },
     (BuildContext context) {
-      context.go('/game-online');
+      // Lắng nghe khi userNotifier thay đổi
+      ref.listenManual(userNotifier, (previous, next) {
+        final userId = _getUserId(next.value);
+        if (userId == null) return;
+        _ensureSocketReady(userId);
+        SocketService.emit('request-play-game-online', {
+          'idUser': userId,
+        });
+      });
+
+      // Khi widget được khởi tạo
+      final current = ref.read(userNotifier);
+      final userId = _getUserId(current.value);
+      if (userId != null) {
+        _ensureSocketReady(userId);
+        SocketService.emit('request-play-game-online', {
+          'idUser': userId,
+        });
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.white,
+        builder: (context) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: 25,
+              children: [
+                Text(
+                  "Đang tìm một người chơi...",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w300,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+
+                CircularProgressIndicator(),
+                ButtonNormal(
+                  text: "Thoát",
+                  onPressed: () => {
+                    SocketService.emit('out-room'),
+                    Navigator.pop(context),
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
     },
   ];
   // Danh sách chức năng cho nút trợ giúp
@@ -226,8 +277,10 @@ class _GameMode extends ConsumerState<GameMode> {
 
       if (gameMode == 'AI') {
         context.go('/play-ai/$idRoom');
-      } else {
+      } else if (gameMode == 'FRIEND') {
         context.go('/play/$idRoom');
+      } else {
+        context.go('/game-online/$idRoom');
       }
     });
   }

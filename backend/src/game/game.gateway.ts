@@ -189,29 +189,20 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
       socket: client,
     });
     if (requestAddQueue !== null) {
-      const [data, firstUser, secondUser] = await Promise.all([
-        this.gameService.StartGameOnline(requestAddQueue),
-        this.usersService.getUser(requestAddQueue.firstUser.idUser),
-        this.usersService.getUser(requestAddQueue.secondUser.idUser),
-      ]);
-
-      requestAddQueue.firstUser.socket.emit('join-room', {
-        idRoom: data.roomId,
-        isYourTurn: data.isUser1Playfirst,
-        opponent: {
-          id: secondUser?.id,
-          username: secondUser?.username,
-          avatarUrl: secondUser?.avatar_url,
-        },
+      const response_create_room = await this.gameService.RequestCreateRoom({
+        idUser: requestAddQueue.firstUser.idUser,
+        socketUser: client,
+        gameMode: 'ONLINE',
       });
-      requestAddQueue.secondUser.socket.emit('join-room', {
-        idRoom: data.roomId,
-        isYourTurn: !data.isUser1Playfirst,
-        opponent: {
-          id: firstUser?.id,
-          username: firstUser?.username,
-          avatarUrl: firstUser?.avatar_url,
-        },
+      
+      requestAddQueue.firstUser.socket.emit('response-create-room', {
+        idRoom: response_create_room.idRoom,
+        gameMode: 'ONLINE',
+      });
+      
+      requestAddQueue.secondUser.socket.emit('response-create-room', {
+        idRoom: response_create_room.idRoom,
+        gameMode: 'ONLINE',
       });
     }
   }
@@ -277,7 +268,7 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: RequestStartGameType,
   ) {
     const gameMode = data.gameMode || 'FRIEND';
-    if (gameMode == 'FRIEND') {
+    if (gameMode == 'FRIEND' || gameMode == 'ONLINE') {
       const request = await this.gameService.RequestStartGame({
         idRoom: data.idRoom,
         idUser: data.idUser,
@@ -569,8 +560,8 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('request-on-move')
   async requestOnMove(@MessageBody() data: RequestOnMove) {
     const gameMode = data.gameMode || 'FRIEND';
-    if (gameMode == 'FRIEND') {
-      const resPonseData = await this.gameService.RequestOnMove(data, 'FRIEND');
+    if (gameMode == 'FRIEND' || gameMode == 'ONLINE') {
+      const resPonseData = await this.gameService.RequestOnMove(data, gameMode);
       if (resPonseData.state === 'OK') {
         resPonseData.socketUser!.emit('response-on-move', {
           x: resPonseData.x,
@@ -630,8 +621,8 @@ export class GameGateWay implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('request-playagain')
   async requestPlayagain(@MessageBody() data: RequestStartGameType) {
     const gameMode = data.gameMode || 'FRIEND';
-    if (gameMode == 'FRIEND') {
-      const request = await this.gameService.RequestPlayagain(data, 'FRIEND');
+    if (gameMode == 'FRIEND' || gameMode == 'ONLINE') {
+      const request = await this.gameService.RequestPlayagain(data, gameMode);
       if (request.state === 'PLAY') {
         const [user0Profile, user1Profile] = await Promise.all([
           this.usersService.getUser(request.user![0].idUser),

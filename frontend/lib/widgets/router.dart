@@ -42,10 +42,6 @@ final GoRouter router = GoRouter(
       builder: (_, _) => const SafeArea(child: Scaffold(body: Game())),
     ),
     GoRoute(
-      path: '/game-online',
-      builder: (_, _) => const SafeArea(child: Scaffold(body: GameOnline())),
-    ),
-    GoRoute(
       path: '/login',
       builder: (_, _) => const SafeArea(child: Scaffold(body: Login())),
     ),
@@ -75,6 +71,15 @@ final GoRouter router = GoRouter(
         final idRoom = state.pathParameters['idRoom']!;
         return SafeArea(
           child: Scaffold(body: GameMachine(idRoom: idRoom)),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/game-online/:idRoom',
+      builder: (context, state) {
+        final idRoom = state.pathParameters['idRoom']!;
+        return SafeArea(
+          child: Scaffold(body: GameOnline(idRoom: idRoom)),
         );
       },
     ),
