@@ -15,60 +15,76 @@ class Game extends StatelessWidget{
     return Column(
       children: [
         Frame(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Row(
-                // spacing: 2,
-                children: [
-                  MyCustomPaintX(size: 25)
-                ],
-              ),
-              Row(
-                spacing: 10,
-                mainAxisAlignment: MainAxisAlignment.center,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final isSmallScreen = screenWidth < 600;
+              
+              // Responsive sizing
+              double iconSize = isSmallScreen ? 20.0 : 25.0;
+              double avatarSize = isSmallScreen ? 30.0 : 40.0;
+              double nameFontSize = isSmallScreen ? 12.0 : 16.0;
+              double statusFontSize = isSmallScreen ? 10.0 : 12.0;
+              double scoreFontSize = isSmallScreen ? 24.0 : 32.0;
+              double spacing = isSmallScreen ? 6.0 : 10.0;
+              
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Column(
-                    spacing: 0,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  Row(
                     children: [
-                      Text("User1", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: Colors.black),),
-                      Text("12 giây", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300, color: Colors.black),),
+                      MyCustomPaintX(size: iconSize)
                     ],
                   ),
-                  CircleCountDown(
-                    size: 40, 
-                    seconds: 5,
-                    running: true,
+                  Expanded(
+                    child: Row(
+                      spacing: spacing,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Column(
+                          spacing: 0,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(isSmallScreen ? "(Bạn)" : "User1", style: TextStyle(fontSize: nameFontSize, fontWeight: FontWeight.w300, color: Colors.black),),
+                            Text("12 giây", style: TextStyle(fontSize: statusFontSize, fontWeight: FontWeight.w300, color: Colors.black),),
+                          ],
+                        ),
+                        CircleCountDown(
+                          size: avatarSize, 
+                          seconds: 5,
+                          running: true,
+                        ),
+                        Text("0", style: TextStyle(fontSize: scoreFontSize, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
+                        Text(":", style: TextStyle(fontSize: scoreFontSize, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
+                        Text("0", style: TextStyle(fontSize: scoreFontSize, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
+                        CircleCountDown(
+                          size: avatarSize, 
+                          seconds: 5,
+                          running: true,
+                        ),
+                        Column(
+                          spacing: 0,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(isSmallScreen ? "(Đối thủ)" : "User1", style: TextStyle(fontSize: nameFontSize, fontWeight: FontWeight.w300, color: Colors.black),),
+                            Text("12 giây", style: TextStyle(fontSize: statusFontSize, fontWeight: FontWeight.w300, color: Colors.black),),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  Text("0", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
-                  Text(":", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
-                  Text("0", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.grey[600]),),
-                  CircleCountDown(
-                    size: 40, 
-                    seconds: 5,
-                    running: true,
-                  ),
-                  Column(
-                    spacing: 0,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text("User1", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w300, color: Colors.black),),
-                      Text("12 giây", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300, color: Colors.black),),
+                      MyCustomPaintO(size: iconSize)
                     ],
                   ),
-                ],
-              ),
-              Row(
-                children: [
-                  MyCustomPaintO(size: 25)
-                ],
-              ),
-            ]
+                ]
+              );
+            }
           )
         ),
         MyDivider(),

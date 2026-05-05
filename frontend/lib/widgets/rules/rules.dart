@@ -12,8 +12,7 @@ class Rules extends StatelessWidget{
       "Một khi đã đặt quân, không được đi lại.",
       "Người chơi giành chiến thắng khi đặt được 5 quân cờ liên tiếp trên 1 hàng (hàng ngang, hàng dọc, hàng chéo).",
       "Hai người chơi cùng hòa khi bàn cờ đã kín hoặc đã hết thời gian quy định.",
-      "Thời gian mỗi lượt: 40 giây.",
-      "Số phút cho mỗi người chơi: 5 phút.",
+      "Thời gian mỗi lượt: 60 giây.",
       "Người đi trước: ngẫu nhiên.",
     ];
 

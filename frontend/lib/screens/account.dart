@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:frontend/core/providers/user_provider.dart';
 import 'package:frontend/core/services/b2_service.dart';
 import 'package:frontend/core/services/service.dart';
+import 'package:frontend/core/notifiers/user_notifier.dart';
 import 'package:frontend/core/providers/login_with_email_provider.dart';
 import 'package:frontend/core/providers/login_with_google_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -29,11 +31,14 @@ class _AccountState extends ConsumerState<Account> {
   int _type = 0; // 0: Guest, 1: Email, 2: Google
   PlatformFile? _platformFile;
   bool _isLoading = false; // Trạng thái loading để tránh dùng Navigator.pop lỗi
+  String _uuid = '';
+  bool _isLoadingUuid = true; // Trạng thái loading để tránh dùng Navigator.pop lỗi
 
   @override
   void initState() {
     super.initState();
     _loadAccountData();
+    _loadUuid();
   }
 
   Future<void> _loadAccountData() async {
@@ -61,6 +66,25 @@ class _AccountState extends ConsumerState<Account> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi khi tải thông tin tài khoản: $e')),
         );
+      }
+    }
+  }
+
+  Future<void> _loadUuid() async {
+    try {
+      final uid = await FlutterSecureStorage().read(key: 'uid');
+      if (uid != null && mounted) {
+        setState(() {
+          _uuid = uid;
+          _isLoadingUuid = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _uuid = 'Không thể tải UUID';
+          _isLoadingUuid = false;
+        });
       }
     }
   }
@@ -155,7 +179,10 @@ class _AccountState extends ConsumerState<Account> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
+          // Load lại dữ liệu để cập nhật header
           _loadAccountData();
+          // Refresh user notifier để cập nhật header
+          ref.read(userNotifier.notifier).loadUser();
         }
       } catch (e) {
         if (mounted) {
@@ -341,6 +368,73 @@ class _AccountState extends ConsumerState<Account> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Mã định danh người dùng (UUID)',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF4A4A4A)),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Text(
+                        _isLoadingUuid ? 'Đang tải...' : _uuid,
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () async {
+                      if (_uuid.isNotEmpty && _uuid != 'Không thể tải UUID') {
+                        await Clipboard.setData(ClipboardData(text: _uuid));
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.white),
+                                  SizedBox(width: 10),
+                                  Text('Đã sao chép UUID!'),
+                                ],
+                              ),
+                              backgroundColor: Colors.green[700],
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.copy, size: 18),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.indigo[50],
+                      foregroundColor: Colors.indigo[700],
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
         _buildTextField(
           label: 'Tên hiển thị',
           controller: userEdit,
@@ -440,35 +534,6 @@ class _AccountState extends ConsumerState<Account> {
   }
 
   Widget _buildActionButtons() {
-    if (_type == 0) {
-      return Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildSmallButton(
-                  label: 'Lưu tài khoản',
-                  icon: Icons.cloud_upload_outlined,
-                  color: Colors.blue[700]!,
-                  onPressed: () => context.push('/register'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSmallButton(
-                  label: 'Đăng nhập',
-                  icon: Icons.login_rounded,
-                  color: Colors.indigo[700]!,
-                  onPressed: () => context.push('/login'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildPrimaryButton(label: 'LƯU THAY ĐỔI', onPressed: update),
-        ],
-      );
-    }
     return _buildPrimaryButton(label: 'LƯU THAY ĐỔI', onPressed: update);
   }
 

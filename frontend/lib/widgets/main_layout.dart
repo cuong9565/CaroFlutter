@@ -53,15 +53,11 @@ class _MainLayout extends ConsumerState<Mainlayout> {
   // Danh sách các hàm cho chức năng ở header
   final List<void Function(BuildContext)> showPopOverFunctions = [
     _showPopOverUser,
-    _showPopOverAlert,
-    _showPopOverSetting,
   ];
 
   // Danh sách icon cho chức năng ở header
   final List<IconData> popOverFunctionsIcon = [
     FontAwesomeIcons.user,
-    FontAwesomeIcons.bell,
-    FontAwesomeIcons.gear,
   ];
 
   // Danh đường dẫn
@@ -107,17 +103,39 @@ class _MainLayout extends ConsumerState<Mainlayout> {
                       Row(
                         spacing: 10,
                         children: [
-                          for (int i = 0; i < showPopOverFunctions.length; i++)
-                            CircleButton1(
-                              onPressed: (btnContext) {
-                                showPopOverFunctions[i](btnContext);
-                              },
-                              child: Icon(
-                                popOverFunctionsIcon[i],
-                                size: 15,
-                                color: Colors.grey[800],
-                              ),
+                          // Display user avatar and name instead of popup button
+                          InkWell(
+                            onTap: () {
+                              context.go('/account');
+                            },
+                            child: Row(
+                              spacing: 8,
+                              children: [
+                                // User Avatar
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundImage: (data?['user']?['avatar_url'] != null && 
+                                               data?['user']?['avatar_url']!.isNotEmpty)
+                                      ? NetworkImage(data?['user']?['avatar_url']!)
+                                      : null,
+                                  backgroundColor: Colors.grey[300],
+                                  child: (data?['user']?['avatar_url'] == null || 
+                                             data?['user']?['avatar_url']!.isEmpty)
+                                      ? Icon(Icons.person, size: 16, color: Colors.grey[600])
+                                      : null,
+                                ),
+                                // User Name
+                                Text(
+                                  data?['user']?['username'] ?? 'Guest',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
                     ],
@@ -255,9 +273,6 @@ void _showPopOverUser(BuildContext btnContext) {
   // For Item PopUp
   final List<void Function()> onPresseds = [
     () {
-      Navigator.of(btnContext).pop();
-    },
-    () {
       btnContext.go("/login");
     },
     () async {
@@ -278,8 +293,8 @@ void _showPopOverUser(BuildContext btnContext) {
     FontAwesomeIcons.arrowRightToBracket,
     FontAwesomeIcons.arrowRightFromBracket,
   ];
-  final List<String> txts = ["Lưu tài khoản", "Đăng nhập", "Đăng xuất"];
-  final List<Color> colors = [Colors.black, Colors.black, Colors.red];
+  final List<String> txts = ["Đăng nhập", "Đăng xuất"];
+  final List<Color> colors = [Colors.black, Colors.red];
 
   // Gọi hàm
   PopUpLayout(
