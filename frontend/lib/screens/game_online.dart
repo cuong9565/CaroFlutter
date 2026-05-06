@@ -96,7 +96,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
           stateGame = data['stateGame'];
           isUserReady = data['isUserReady'];
           isYouReady = data['isYouReady'];
-          turnDurationMs = (data['turnDurationMs'] as num?)?.toInt() ?? 30000;
+          turnDurationMs = 30000;
           final payloadBoardSize =
               (data['boardSize'] as num?)?.toInt() ??
               ((data['board'] as List?)?.length ?? gridSize);
@@ -156,7 +156,7 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
 
           visitedX = newVisitedX;
           visitedO = newVisitedO;
-          _setTurnDeadline((data['turnDeadlineMs'] as num?)?.toInt());
+          _setTurnDeadline(DateTime.now().millisecondsSinceEpoch + 30000);
         }
       });
     });
@@ -219,9 +219,8 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
           return;
         }
         yourTurn = true;
-        turnDurationMs =
-            (data['turnDurationMs'] as num?)?.toInt() ?? turnDurationMs;
-        _setTurnDeadline((data['turnDeadlineMs'] as num?)?.toInt());
+        turnDurationMs = 30000;
+        _setTurnDeadline(DateTime.now().millisecondsSinceEpoch + 30000);
         if (!yourX) {
           visitedX = {
             ...visitedX,
@@ -928,6 +927,8 @@ class _GameOnlineState extends ConsumerState<GameOnline> {
           'y': col,
         });
       });
+      _setTurnDeadline(DateTime.now().millisecondsSinceEpoch + 30000);
+      _updateCountdownTick();
     }
   }
 
